@@ -1,8 +1,6 @@
-# Wins Tracker App
+# Staxx
 
-A personal monthly wins tracker for logging earnings, setting goals, and visualizing income sources.
-
-**[Check it out here](https://wins-tracker-app.vercel.app/)**
+A personal monthly wins tracker for logging earnings, setting goals, and visualizing income sources — with optional cloud sign-in so your data follows you across devices.
 
 ## Features
 
@@ -13,8 +11,8 @@ A personal monthly wins tracker for logging earnings, setting goals, and visuali
 - Custom source categories (add/remove your own)
 - Dark / Light theme toggle
 - CSV Import & Export (clipboard, file download, file upload)
-- All data saved locally in your browser via `localStorage`
-- Switch devices by exporting CSV from one and importing on another
+- Works fully offline — data saved in your browser via `localStorage`
+- **Optional cloud sync** — sign in with Google or email/password to sync across devices (see [SETUP-AUTH.md](SETUP-AUTH.md))
 - Year navigation to track across multiple years
 - Reset controls for individual months or full year
 - Fully responsive - works on mobile and desktop
@@ -22,9 +20,10 @@ A personal monthly wins tracker for logging earnings, setting goals, and visuali
 ## Project Structure
 
 ```
-Wins-Tracker-App/
-├── index.html    # The entire app (single file)
-├── demo.html     # Demo version with sample data
+Staxx/
+├── index.html       # The entire app (single file)
+├── demo.html        # Demo version with sample data
+├── SETUP-AUTH.md    # Guide to enable cloud sign-in (Supabase)
 ├── README.md
 └── LICENSE
 ```
@@ -35,9 +34,10 @@ Wins-Tracker-App/
    ```bash
    git clone https://github.com/Ollie202/Wins-Tracker-App.git
    ```
-2. Open `index.html` in your browser.
+2. Open `index.html` in your browser — no installation required.
 
-No installation required. Just open the file.
+> Note: cloud sign-in (Google especially) needs the app served over `http(s)`, not `file://`.
+> Run a quick local server with `python -m http.server 8000`, then open http://localhost:8000.
 
 ## CSV Format
 

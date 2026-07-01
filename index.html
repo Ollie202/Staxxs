@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-<title>Money Made — Track Your Wins</title>
+<title>Staxx — Track Your Wins</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box}
@@ -20,8 +20,20 @@ canvas{max-width:100%!important}
 <body>
 <div id="app"></div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 "use strict";
+
+// ===== Cloud sync (Supabase) =====
+// Paste your project credentials here to enable sign-in + cloud sync.
+// Find them in Supabase → Project Settings → API. See SETUP-AUTH.md for the full guide.
+// The anon key is safe to expose in the browser (Row Level Security protects the data).
+const SUPABASE_URL="https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON_KEY="YOUR-ANON-KEY";
+const cloudEnabled=()=>SUPABASE_URL.indexOf("YOUR-PROJECT")===-1&&SUPABASE_ANON_KEY.indexOf("YOUR-ANON")===-1;
+let sb=null;
+if(cloudEnabled()&&window.supabase){sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);}
+let cloudLoaded=false,cloudTimer=null;
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const CHART_TYPES=["Bar","Line","Area","Radar","Pie"];
 const DEFAULT_SOURCES=["Bounties","Ambassadorships","Content","Dev","Web3 Jobs","NFTs","Predictions","X Monetization","Other"];
@@ -29,7 +41,7 @@ const DEFAULT_SOURCES=["Bounties","Ambassadorships","Content","Dev","Web3 Jobs",
 const LIGHT={bg:"linear-gradient(180deg,#FFFCF7 0%,#F7F2EA 50%,#FFF9F0 100%)",card:"#FFFCF7",border:"#EDE6DA",text:"#3D3225",sub:"#8B7355",muted:"#BDB298",input:"#FAF6EF",inputBorder:"#E8E0D4",barBg:"#F0E9DD",accent:"#C4956A",accentGrad:"linear-gradient(90deg,#D4C5B0 0%,#C4956A 100%)",greenGrad:"linear-gradient(90deg,#C4956A 0%,#6B8E5A 100%)",green:"#6B8E5A",toggleBg:"#F0E9DD",tooltipBg:"#FFFCF7",tooltipBorder:"#E8E0D4",danger:"#C0524D",tag:"#F0E9DD",sc:{Bounties:"#C4956A",Ambassadorships:"#8B7355",Content:"#D4A574",Dev:"#A0522D","Web3 Jobs":"#9C7E5C",NFTs:"#C2A67E",Predictions:"#7A6245","X Monetization":"#B08D6A",Other:"#BDB298"}};
 const DARK={bg:"linear-gradient(180deg,#1A1714 0%,#201D18 50%,#1A1714 100%)",card:"#252219",border:"#3A3530",text:"#F0E9DD",sub:"#A89880",muted:"#6B6256",input:"#2C2820",inputBorder:"#3A3530",barBg:"#2C2820",accent:"#C4956A",accentGrad:"linear-gradient(90deg,#5C4D3C 0%,#C4956A 100%)",greenGrad:"linear-gradient(90deg,#C4956A 0%,#6B8E5A 100%)",green:"#7DA86B",toggleBg:"#3A3530",tooltipBg:"#252219",tooltipBorder:"#3A3530",danger:"#D4645F",tag:"#3A3530",sc:{Bounties:"#D4A87A",Ambassadorships:"#A89880",Content:"#DEB88A",Dev:"#C0724D","Web3 Jobs":"#B09878",NFTs:"#D4BA90",Predictions:"#9A8260","X Monetization":"#C4A07A",Other:"#8A7D6E"}};
 
-const KEY="moneymade-v2";
+const KEY="staxx-v1";
 const gid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const escRe=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
 const fmt=n=>"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -38,7 +50,7 @@ const $$=s=>document.querySelectorAll(s);
 const el=(tag,attrs,children)=>{const e=document.createElement(tag);if(attrs)Object.entries(attrs).forEach(([k,v])=>{if(k==="style"&&typeof v==="object")Object.assign(e.style,v);else if(k.startsWith("on"))e.addEventListener(k.slice(2).toLowerCase(),v);else if(k==="innerHTML")e.innerHTML=v;else e.setAttribute(k,v);});if(children!==undefined){if(Array.isArray(children))children.forEach(c=>{if(c)e.appendChild(typeof c==="string"?document.createTextNode(c):c);});else if(typeof children==="string")e.textContent=children;else if(children instanceof Node)e.appendChild(children);}return e;};
 
 let state={
-  dark:localStorage.getItem("moneymade-dark")==="true",
+  dark:localStorage.getItem("staxx-dark")==="true",
   year:new Date().getFullYear(),
   chartType:"Bar",
   wins:[],goals:{},sources:[...DEFAULT_SOURCES],
@@ -50,14 +62,81 @@ let state={
   addForm:{month:MONTHS[new Date().getMonth()],project:"",amount:"",source:"Bounties"},
   editForm:{month:"Jan",project:"",amount:"",source:"Bounties"},
   goalForm:{month:"Jan",target:""},
-  newSource:""
+  newSource:"",
+  user:null,showAuth:false,showAccount:false,authMode:"signin",authBusy:false,authError:"",
+  authForm:{email:"",password:""}
 };
 
 let chart=null;
 let toastTimer=null;
 
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d){if(d.wins&&d.wins.length)state.wins=d.wins;if(d.goals)state.goals=d.goals;if(d.sources&&d.sources.length)state.sources=d.sources;}}catch(e){}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify({wins:state.wins,goals:state.goals,sources:state.sources}));localStorage.setItem("moneymade-dark",state.dark?"true":"false");}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({wins:state.wins,goals:state.goals,sources:state.sources}));localStorage.setItem("staxx-dark",state.dark?"true":"false");}catch(e){}cloudSave();}
+
+// ===== Cloud data sync =====
+async function cloudLoad(){
+  if(!sb||!state.user)return null;
+  const {data,error}=await sb.from("user_data").select("data").eq("user_id",state.user.id).maybeSingle();
+  if(error){console.warn("cloud load failed",error);return null;}
+  return data?data.data:null;
+}
+function cloudSave(){
+  if(!sb||!state.user)return;
+  clearTimeout(cloudTimer);
+  cloudTimer=setTimeout(async()=>{
+    const payload={user_id:state.user.id,data:{wins:state.wins,goals:state.goals,sources:state.sources},updated_at:new Date().toISOString()};
+    const {error}=await sb.from("user_data").upsert(payload,{onConflict:"user_id"});
+    if(error)console.warn("cloud save failed",error);
+  },800);
+}
+
+// ===== Auth actions =====
+async function signInGoogle(){
+  if(!sb){state.authError="Cloud sync isn't configured yet.";render();return;}
+  await sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin+window.location.pathname}});
+}
+async function signInEmail(){
+  if(!sb){state.authError="Cloud sync isn't configured yet.";render();return;}
+  const {email,password}=state.authForm;
+  if(!email||!password){state.authError="Enter your email and password.";render();return;}
+  state.authBusy=true;state.authError="";render();
+  const {error}=await sb.auth.signInWithPassword({email:email.trim(),password});
+  state.authBusy=false;
+  if(error){state.authError=error.message;render();return;}
+}
+async function signUpEmail(){
+  if(!sb){state.authError="Cloud sync isn't configured yet.";render();return;}
+  const {email,password}=state.authForm;
+  if(!email||!password){state.authError="Enter your email and password.";render();return;}
+  if(password.length<6){state.authError="Password must be at least 6 characters.";render();return;}
+  state.authBusy=true;state.authError="";render();
+  const {data,error}=await sb.auth.signUp({email:email.trim(),password});
+  state.authBusy=false;
+  if(error){state.authError=error.message;render();return;}
+  if(data.user&&!data.session){state.showAuth=false;render();showToast("Check your email to confirm your account");return;}
+}
+async function signOut(){
+  if(sb)await sb.auth.signOut();
+  state.user=null;state.showAccount=false;cloudLoaded=false;render();showToast("Signed out");
+}
+async function onSignedIn(session,event){
+  state.user=session.user;
+  if(!cloudLoaded&&(event==="SIGNED_IN"||event==="INITIAL_SESSION")){
+    cloudLoaded=true;
+    const cloud=await cloudLoad();
+    if(cloud){
+      state.wins=cloud.wins||[];
+      state.goals=cloud.goals||{};
+      state.sources=(cloud.sources&&cloud.sources.length)?cloud.sources:[...DEFAULT_SOURCES];
+      try{localStorage.setItem(KEY,JSON.stringify({wins:state.wins,goals:state.goals,sources:state.sources}));}catch(e){}
+    }else{
+      // First sign-in with no cloud data yet — migrate whatever is local up to the cloud.
+      cloudSave();
+    }
+  }
+  state.showAuth=false;
+  render();
+}
 
 function showToast(msg){state.toast=msg;render();clearTimeout(toastTimer);toastTimer=setTimeout(()=>{state.toast=null;render();},3000);}
 
@@ -102,7 +181,7 @@ function render(){
   // Header
   const hdr=el("div",{style:{padding:"28px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:"12px"}});
   const hdrL=el("div",{});
-  hdrL.appendChild(el("h1",{style:{fontFamily:"'Playfair Display',serif",fontSize:"28px",fontWeight:"700",margin:"0",color:th.text,letterSpacing:"-0.5px"}},"Money Made"));
+  hdrL.appendChild(el("h1",{style:{fontFamily:"'Playfair Display',serif",fontSize:"28px",fontWeight:"700",margin:"0",color:th.text,letterSpacing:"-0.5px"}},"Staxx"));
   hdrL.appendChild(el("p",{style:{margin:"4px 0 0",fontSize:"12px",color:th.sub}},"Track your wins, stack your bags"));
   const hdrR=el("div",{style:{display:"flex",gap:"6px",alignItems:"center"}});
 
@@ -116,7 +195,21 @@ function render(){
   const yrR=el("button",{style:{width:"32px",height:"32px",borderRadius:"50%",border:"1px solid "+th.border,background:th.card,cursor:"pointer",fontSize:"14px",color:th.sub,display:"flex",alignItems:"center",justifyContent:"center"},onClick:()=>{state.year++;render();}},"\u2192");
   const yrSpan=el("span",{style:{fontFamily:"'Playfair Display',serif",fontSize:"20px",fontWeight:"600",color:th.text,minWidth:"48px",textAlign:"center"}},String(state.year));
 
-  hdrR.append(csvBtn,thBtn,yrL,yrSpan,yrR);
+  // Auth / account button
+  const authWrap=el("div",{style:{position:"relative"}});
+  const authBtn=el("button",{style:{width:"34px",height:"34px",borderRadius:"50%",border:"1px solid "+th.border,background:state.user?th.accent:th.card,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#FFFCF7",fontSize:"14px",fontWeight:"700",fontFamily:"'DM Sans',sans-serif"},title:state.user?state.user.email:"Sign in to sync",onClick:()=>{if(state.user){state.showAccount=!state.showAccount;}else{state.showAuth=true;state.authError="";}render();}});
+  if(state.user){authBtn.textContent=((state.user.email||"?")[0]||"?").toUpperCase();}
+  else authBtn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="'+th.sub+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+  authWrap.appendChild(authBtn);
+  if(state.user&&state.showAccount){
+    const menu=el("div",{style:{position:"absolute",top:"42px",right:"0",background:th.card,border:"1px solid "+th.border,borderRadius:"10px",padding:"12px",minWidth:"190px",zIndex:"60",boxShadow:"0 8px 24px rgba(0,0,0,.18)",animation:"fadeIn .15s ease"}});
+    menu.appendChild(el("div",{style:{fontSize:"10px",color:th.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:"3px"}},"Signed in as"));
+    menu.appendChild(el("div",{style:{fontSize:"12px",color:th.text,fontWeight:"600",marginBottom:"10px",wordBreak:"break-all"}},state.user.email));
+    menu.appendChild(el("button",{style:{width:"100%",padding:"9px",borderRadius:"8px",border:"1px solid "+th.border,background:"transparent",color:th.accent,fontSize:"12px",fontWeight:"600",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"},onClick:()=>signOut()},"Sign out"));
+    authWrap.appendChild(menu);
+  }
+
+  hdrR.append(authWrap,csvBtn,thBtn,yrL,yrSpan,yrR);
   hdr.append(hdrL,hdrR);
   app.appendChild(hdr);
 
@@ -404,8 +497,11 @@ function render(){
 
   // Footer tip
   const footer=el("div",{style:{textAlign:"center",padding:"0 20px 24px"}});
-  footer.appendChild(el("p",{style:{fontSize:"10px",color:th.muted,margin:"0",lineHeight:"1.5"}},"Your data lives in this browser. Export CSV regularly to back up or switch devices."));
+  footer.appendChild(el("p",{style:{fontSize:"10px",color:th.muted,margin:"0",lineHeight:"1.5"}},state.user?("Synced to your account — "+state.user.email):(cloudEnabled()?"Sign in to sync your bags across devices. Your data is saved locally too.":"Your data lives in this browser. Export CSV regularly to back up or switch devices.")));
   app.appendChild(footer);
+
+  // Auth modal
+  if(state.showAuth)app.appendChild(renderAuthModal(th));
 
   // Render chart
   renderChart(th,wins);
@@ -456,6 +552,35 @@ function mkPill(text,active,onClick,th){
   return el("button",{style:{padding:"4px 10px",borderRadius:"14px",border:"1px solid "+(active?th.accent:th.border),background:active?th.accent:"transparent",color:active?"#FFFCF7":th.sub,fontSize:"10px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:active?"600":"400"},onClick},text);
 }
 
+function renderAuthModal(th){
+  const ov=el("div",{style:{position:"fixed",inset:"0",background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:"200",padding:"20px",animation:"fadeIn .2s ease"},onClick:e=>{if(e.target===ov){state.showAuth=false;render();}}});
+  const card=el("div",{style:{background:th.card,border:"1px solid "+th.border,borderRadius:"16px",padding:"26px",width:"100%",maxWidth:"360px",boxShadow:"0 12px 40px rgba(0,0,0,.25)",maxHeight:"90vh",overflowY:"auto"}});
+  const signup=state.authMode==="signup";
+  card.appendChild(el("h2",{style:{fontFamily:"'Playfair Display',serif",fontSize:"22px",margin:"0 0 4px",color:th.text}},signup?"Create account":"Welcome back"));
+  card.appendChild(el("p",{style:{fontSize:"12px",color:th.sub,margin:"0 0 18px"}},"Sync your bags across devices"));
+  if(!cloudEnabled()){
+    card.appendChild(el("div",{style:{fontSize:"11px",color:th.danger,background:th.danger+"18",border:"1px solid "+th.danger,borderRadius:"8px",padding:"10px",marginBottom:"14px",lineHeight:"1.5"}},"Cloud sync isn't set up yet. Add your Supabase URL and anon key near the top of index.html — see SETUP-AUTH.md."));
+  }
+  // Google
+  const g=el("button",{style:{width:"100%",padding:"11px",borderRadius:"10px",border:"1px solid "+th.inputBorder,background:th.input,color:th.text,fontSize:"13px",fontWeight:"600",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:"9px",marginBottom:"16px"},onClick:()=>signInGoogle()});
+  g.innerHTML='<svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571.001-.001.002-.001.003-.002l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg> Continue with Google';
+  card.appendChild(g);
+  // divider
+  const dv=el("div",{style:{display:"flex",alignItems:"center",gap:"10px",marginBottom:"16px"}});
+  dv.append(el("div",{style:{flex:"1",height:"1px",background:th.border}}),el("span",{style:{fontSize:"10px",color:th.muted,textTransform:"uppercase",letterSpacing:"0.5px"}},"or"),el("div",{style:{flex:"1",height:"1px",background:th.border}}));
+  card.appendChild(dv);
+  // email + password
+  card.appendChild(mkInput(state.authForm.email,"you@email.com",v=>{state.authForm.email=v;},"Email","email",th));
+  card.appendChild(el("div",{style:{height:"10px"}}));
+  card.appendChild(mkInput(state.authForm.password,"••••••",v=>{state.authForm.password=v;},"Password","password",th));
+  if(state.authError)card.appendChild(el("div",{style:{fontSize:"11px",color:th.danger,marginTop:"10px",lineHeight:"1.4"}},state.authError));
+  card.appendChild(el("button",{style:{width:"100%",padding:"12px",borderRadius:"10px",border:"none",background:th.accent,color:"#FFFCF7",fontSize:"13px",fontWeight:"700",cursor:state.authBusy?"default":"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"14px",opacity:state.authBusy?"0.6":"1"},onClick:()=>{if(state.authBusy)return;signup?signUpEmail():signInEmail();}},state.authBusy?"Please wait…":(signup?"Create account":"Sign in")));
+  card.appendChild(el("button",{style:{width:"100%",padding:"10px",borderRadius:"8px",border:"none",background:"transparent",color:th.sub,fontSize:"11px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"6px"},onClick:()=>{state.authMode=signup?"signin":"signup";state.authError="";render();}},signup?"Already have an account? Sign in":"New here? Create an account"));
+  card.appendChild(el("button",{style:{width:"100%",padding:"6px",borderRadius:"8px",border:"none",background:"transparent",color:th.muted,fontSize:"11px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"2px"},onClick:()=>{state.showAuth=false;render();}},"Cancel"));
+  ov.appendChild(card);
+  return ov;
+}
+
 function doAddSource(){
   const s=state.newSource.trim();
   if(!s||state.sources.includes(s)){showToast(s?"Source already exists":"Enter a name");return;}
@@ -481,7 +606,7 @@ function downloadCSV(){
   if(!state.csvText)return;
   const blob=new Blob([state.csvText],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");a.href=url;a.download="wins-tracker-"+state.year+".csv";
+  const a=document.createElement("a");a.href=url;a.download="Staxx-"+state.year+".csv";
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   showToast("CSV file downloaded");
 }
@@ -534,6 +659,14 @@ function importCSV(){
 // Init
 load();
 render();
+
+// Restore session + react to sign-in / sign-out
+if(sb){
+  sb.auth.onAuthStateChange((event,session)=>{
+    if(session&&session.user){onSignedIn(session,event);}
+    else{state.user=null;cloudLoaded=false;render();}
+  });
+}
 </script>
 </body>
 </html>

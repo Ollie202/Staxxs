@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-<title>Money Made — Track Your Wins</title>
+<title>Staxx — Track Your Wins</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box}
@@ -29,7 +29,7 @@ const DEFAULT_SOURCES=["Bounties","Ambassadorships","Content","Dev","Web3 Jobs",
 const LIGHT={bg:"linear-gradient(180deg,#FFFCF7 0%,#F7F2EA 50%,#FFF9F0 100%)",card:"#FFFCF7",border:"#EDE6DA",text:"#3D3225",sub:"#8B7355",muted:"#BDB298",input:"#FAF6EF",inputBorder:"#E8E0D4",barBg:"#F0E9DD",accent:"#C4956A",accentGrad:"linear-gradient(90deg,#D4C5B0 0%,#C4956A 100%)",greenGrad:"linear-gradient(90deg,#C4956A 0%,#6B8E5A 100%)",green:"#6B8E5A",toggleBg:"#F0E9DD",tooltipBg:"#FFFCF7",tooltipBorder:"#E8E0D4",danger:"#C0524D",tag:"#F0E9DD",sc:{Bounties:"#C4956A",Ambassadorships:"#8B7355",Content:"#D4A574",Dev:"#A0522D","Web3 Jobs":"#9C7E5C",NFTs:"#C2A67E",Predictions:"#7A6245","X Monetization":"#B08D6A",Other:"#BDB298"}};
 const DARK={bg:"linear-gradient(180deg,#1A1714 0%,#201D18 50%,#1A1714 100%)",card:"#252219",border:"#3A3530",text:"#F0E9DD",sub:"#A89880",muted:"#6B6256",input:"#2C2820",inputBorder:"#3A3530",barBg:"#2C2820",accent:"#C4956A",accentGrad:"linear-gradient(90deg,#5C4D3C 0%,#C4956A 100%)",greenGrad:"linear-gradient(90deg,#C4956A 0%,#6B8E5A 100%)",green:"#7DA86B",toggleBg:"#3A3530",tooltipBg:"#252219",tooltipBorder:"#3A3530",danger:"#D4645F",tag:"#3A3530",sc:{Bounties:"#D4A87A",Ambassadorships:"#A89880",Content:"#DEB88A",Dev:"#C0724D","Web3 Jobs":"#B09878",NFTs:"#D4BA90",Predictions:"#9A8260","X Monetization":"#C4A07A",Other:"#8A7D6E"}};
 
-const KEY="moneymade-v2";
+const KEY="staxx-v1";
 const gid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const escRe=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
 const fmt=n=>"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -38,7 +38,7 @@ const $$=s=>document.querySelectorAll(s);
 const el=(tag,attrs,children)=>{const e=document.createElement(tag);if(attrs)Object.entries(attrs).forEach(([k,v])=>{if(k==="style"&&typeof v==="object")Object.assign(e.style,v);else if(k.startsWith("on"))e.addEventListener(k.slice(2).toLowerCase(),v);else if(k==="innerHTML")e.innerHTML=v;else e.setAttribute(k,v);});if(children!==undefined){if(Array.isArray(children))children.forEach(c=>{if(c)e.appendChild(typeof c==="string"?document.createTextNode(c):c);});else if(typeof children==="string")e.textContent=children;else if(children instanceof Node)e.appendChild(children);}return e;};
 
 let state={
-  dark:localStorage.getItem("moneymade-dark")==="true",
+  dark:localStorage.getItem("staxx-dark")==="true",
   year:new Date().getFullYear(),
   chartType:"Bar",
   wins:[],goals:{},sources:[...DEFAULT_SOURCES],
@@ -57,7 +57,7 @@ let chart=null;
 let toastTimer=null;
 
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d){if(d.wins&&d.wins.length)state.wins=d.wins;if(d.goals)state.goals=d.goals;if(d.sources&&d.sources.length)state.sources=d.sources;}}catch(e){}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify({wins:state.wins,goals:state.goals,sources:state.sources}));localStorage.setItem("moneymade-dark",state.dark?"true":"false");}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({wins:state.wins,goals:state.goals,sources:state.sources}));localStorage.setItem("staxx-dark",state.dark?"true":"false");}catch(e){}}
 
 function showToast(msg){state.toast=msg;render();clearTimeout(toastTimer);toastTimer=setTimeout(()=>{state.toast=null;render();},3000);}
 
@@ -102,7 +102,7 @@ function render(){
   // Header
   const hdr=el("div",{style:{padding:"28px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:"12px"}});
   const hdrL=el("div",{});
-  hdrL.appendChild(el("h1",{style:{fontFamily:"'Playfair Display',serif",fontSize:"28px",fontWeight:"700",margin:"0",color:th.text,letterSpacing:"-0.5px"}},"Money Made"));
+  hdrL.appendChild(el("h1",{style:{fontFamily:"'Playfair Display',serif",fontSize:"28px",fontWeight:"700",margin:"0",color:th.text,letterSpacing:"-0.5px"}},"Staxx"));
   hdrL.appendChild(el("p",{style:{margin:"4px 0 0",fontSize:"12px",color:th.sub}},"Track your wins, stack your bags"));
   const hdrR=el("div",{style:{display:"flex",gap:"6px",alignItems:"center"}});
 
@@ -481,7 +481,7 @@ function downloadCSV(){
   if(!state.csvText)return;
   const blob=new Blob([state.csvText],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");a.href=url;a.download="wins-tracker-"+state.year+".csv";
+  const a=document.createElement("a");a.href=url;a.download="Staxx-"+state.year+".csv";
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   showToast("CSV file downloaded");
 }
