@@ -63,17 +63,12 @@ export function render(): void {
 
   // Header
   const hdr = el("div", { style: { padding: "28px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" } });
-  const hdrL = el("div", { class: "stx-header-brand" });
-  const hamburger = el("button", { class: "stx-hamburger", style: { width: "38px", height: "38px", borderRadius: "10px", border: "1px solid " + th.border, background: th.card, cursor: "pointer", flexShrink: "0" }, onClick: () => { state.navOpen = !state.navOpen; render(); } });
-  hamburger.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + th.sub + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
-  hdrL.appendChild(hamburger);
-  const brandCol = el("div", {});
+  const hdrL = el("div", {});
   const brand = el("div", { style: { display: "flex", alignItems: "center", gap: "11px" } });
   brand.appendChild(el("img", { src: LOGO_URL, alt: "Staxx logo", width: "30", height: "30", style: { width: "30px", height: "30px", borderRadius: "8px", flexShrink: "0", boxShadow: "0 1px 4px rgba(0,0,0,.12)" } }));
   brand.appendChild(el("h1", { style: { fontFamily: "'Playfair Display',serif", fontSize: "26px", fontWeight: "700", margin: "0", color: th.text, letterSpacing: "-0.5px", lineHeight: "1" } }, "Staxx"));
-  brandCol.appendChild(brand);
-  brandCol.appendChild(el("p", { style: { margin: "8px 0 0", fontSize: "12px", color: th.sub, lineHeight: "1.4" } }, "Track your monthly wins, set earning goals, and watch your bags stack up."));
-  hdrL.appendChild(brandCol);
+  hdrL.appendChild(brand);
+  hdrL.appendChild(el("p", { style: { margin: "8px 0 0", fontSize: "12px", color: th.sub, lineHeight: "1.4" } }, "Track your monthly wins, set earning goals, and watch your bags stack up."));
   const hdrR = el("div", { style: { display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" } });
 
   const csvBtn = el("button", { style: { width: "34px", height: "34px", borderRadius: "50%", border: "1px solid " + th.border, background: th.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }, onClick: () => { state.showCSVPanel = !state.showCSVPanel; state.csvMode = "export"; state.csvText = ""; render(); } });
@@ -420,9 +415,10 @@ export function render(): void {
     app.appendChild(renderProfile(th));
   }
 
-  // Sidebar navigation (fixed on desktop; slide-in drawer on mobile)
-  if (state.navOpen) app.appendChild(el("div", { class: "stx-overlay", onClick: () => { state.navOpen = false; render(); } }));
-  app.appendChild(renderSidebar(th));
+  // Spacer so content clears the floating nav bar
+  app.appendChild(el("div", { style: { height: "88px" } }));
+  // Floating glass navigation bar (bottom)
+  app.appendChild(renderNav(th));
 
   // Auth modal
   if (state.showAuth) app.appendChild(renderAuthModal(th));
@@ -434,27 +430,23 @@ export function render(): void {
   renderChart(th, wins);
 }
 
-/** Sidebar navigation — fixed on desktop, slide-in drawer on mobile. */
-function renderSidebar(th: Theme): HTMLElement {
+/** Floating liquid-glass navigation bar (bottom, same on mobile + desktop). */
+function renderNav(th: Theme): HTMLElement {
   const items: { id: Tab; label: string; icon: string }[] = [
     { id: "home", label: "Home", icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
     { id: "insights", label: "Insights", icon: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>' },
     { id: "profile", label: "Profile", icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
   ];
-  const aside = el("aside", { class: "stx-sidebar" + (state.navOpen ? " open" : ""), style: { background: th.card, borderRight: "1px solid " + th.border } });
-  const brand = el("div", { style: { display: "flex", alignItems: "center", gap: "10px", padding: "6px 10px 20px" } });
-  brand.appendChild(el("img", { src: LOGO_URL, alt: "Staxx logo", width: "30", height: "30", style: { width: "30px", height: "30px", borderRadius: "8px", flexShrink: "0" } }));
-  brand.appendChild(el("span", { style: { fontFamily: "'Playfair Display',serif", fontSize: "20px", fontWeight: "700", color: th.text } }, "Staxx"));
-  aside.appendChild(brand);
+  const bar = el("div", { style: { position: "fixed", bottom: "8px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", padding: "6px", background: th.card + "CC", backdropFilter: "blur(20px) saturate(180%)", WebkitBackdropFilter: "blur(20px) saturate(180%)", border: "1px solid " + th.border + "AA", borderRadius: "999px", boxShadow: "0 10px 32px rgba(0,0,0,.28)", zIndex: "150" } });
   items.forEach((it) => {
     const active = state.tab === it.id;
-    const btn = el("button", { style: { display: "flex", alignItems: "center", gap: "12px", width: "100%", padding: "11px 12px", borderRadius: "10px", border: "none", cursor: "pointer", background: active ? th.accent : "transparent", color: active ? "#FFFCF7" : th.sub, fontFamily: "'DM Sans',sans-serif", fontSize: "14px", fontWeight: active ? "700" : "500", textAlign: "left", marginBottom: "2px", transition: "background .2s, color .2s" }, onClick: () => { state.tab = it.id; state.navOpen = false; state.showCSVPanel = false; window.scrollTo({ top: 0 }); render(); } });
+    const btn = el("button", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", minWidth: "64px", padding: "8px 16px", borderRadius: "999px", border: "none", cursor: "pointer", background: active ? th.accent : "transparent", color: active ? "#FFFCF7" : th.sub, fontFamily: "'DM Sans',sans-serif", transition: "background .2s, color .2s" }, onClick: () => { state.tab = it.id; state.showCSVPanel = false; window.scrollTo({ top: 0 }); render(); } });
     const ic = el("span", { style: { display: "flex" } });
-    ic.innerHTML = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + it.icon + "</svg>";
-    btn.append(ic, el("span", {}, it.label));
-    aside.appendChild(btn);
+    ic.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + it.icon + "</svg>";
+    btn.append(ic, el("span", { style: { fontSize: "10px", fontWeight: active ? "700" : "500" } }, it.label));
+    bar.appendChild(btn);
   });
-  return aside;
+  return bar;
 }
 
 /** Insights view — all-time performance across every year. */
