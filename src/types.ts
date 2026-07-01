@@ -29,6 +29,11 @@ export interface AuthForm {
   password: string;
 }
 
+export interface UserProfile {
+  username: string;
+  avatar: string;
+}
+
 export type CsvMode = "export" | "import";
 export type SourceView = "yearly" | "monthly";
 export type AuthMode = "signin" | "signup";
@@ -77,6 +82,10 @@ export interface State {
   authBusy: boolean;
   authError: string;
   authForm: AuthForm;
+  profile: UserProfile;
+  showProfileSetup: boolean;
+  editingProfile: boolean;
+  profileForm: UserProfile;
 }
 
 /** Persisted slice of state saved to localStorage / the cloud. */
@@ -84,4 +93,5 @@ export interface PersistedData {
   wins: Win[];
   goals: Goals;
   sources: string[];
+  profile?: UserProfile;
 }

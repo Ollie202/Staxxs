@@ -5,9 +5,11 @@ export const MONTHS = [
 
 export const CHART_TYPES = ["Bar", "Line", "Area", "Radar", "Pie"];
 
+export const OTHER_SOURCE = "Other";
+
 export const DEFAULT_SOURCES = [
   "Bounties", "Ambassadorships", "Content", "Dev", "Web3 Jobs",
-  "NFTs", "Predictions", "X Monetization", "Other",
+  "NFTs", "Predictions", "X Monetization", OTHER_SOURCE,
 ];
 
 /** localStorage key for the persisted data blob. */

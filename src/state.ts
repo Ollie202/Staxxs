@@ -1,4 +1,4 @@
-import { KEY, DARK_KEY, TAB_KEY, DEFAULT_SOURCES, MONTHS } from "./constants";
+import { KEY, DARK_KEY, TAB_KEY, DEFAULT_SOURCES, MONTHS, OTHER_SOURCE } from "./constants";
 import type { State, PersistedData, Tab } from "./types";
 import { cloudSave } from "./cloud";
 import { render } from "./render";
@@ -41,6 +41,10 @@ export const state: State = {
   authBusy: false,
   authError: "",
   authForm: { email: "", password: "" },
+  profile: { username: "", avatar: "" },
+  showProfileSetup: false,
+  editingProfile: false,
+  profileForm: { username: "", avatar: "" },
 };
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -52,7 +56,8 @@ export function load(): void {
     if (d) {
       if (d.wins && d.wins.length) state.wins = d.wins;
       if (d.goals) state.goals = d.goals;
-      if (d.sources && d.sources.length) state.sources = d.sources;
+      if (d.sources && d.sources.length) state.sources = d.sources.includes(OTHER_SOURCE) ? d.sources : [...d.sources, OTHER_SOURCE];
+      if (d.profile) state.profile = { username: d.profile.username || "", avatar: d.profile.avatar || "" };
     }
   } catch {
     /* ignore malformed data */
@@ -62,7 +67,7 @@ export function load(): void {
 /** Persist to localStorage and (when signed in) queue a cloud sync. */
 export function save(): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ wins: state.wins, goals: state.goals, sources: state.sources }));
+    localStorage.setItem(KEY, JSON.stringify({ wins: state.wins, goals: state.goals, sources: state.sources, profile: state.profile }));
     localStorage.setItem(DARK_KEY, state.dark ? "true" : "false");
     localStorage.setItem(TAB_KEY, state.tab);
   } catch {
@@ -102,7 +107,8 @@ export const yw = () => state.wins.filter((w) => w.year === state.year);
 /** Add a new custom source (from the source manager input). */
 export function doAddSource(): void {
   const s = state.newSource.trim();
-  if (!s || state.sources.includes(s)) {
+  const duplicate = state.sources.some((source) => source.toLowerCase() === s.toLowerCase());
+  if (!s || duplicate) {
     showToast(s ? "Source already exists" : "Enter a name");
     return;
   }

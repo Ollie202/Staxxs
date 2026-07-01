@@ -9,33 +9,30 @@ import type { PersistedData } from "./types";
 let cloudLoaded = false;
 
 function currentData(): PersistedData {
-  return { wins: state.wins, goals: state.goals, sources: state.sources };
-}
-
-function mergeData(local: PersistedData, cloud: PersistedData | null): PersistedData {
-  if (!cloud) return local;
-  const winsById = new Map<string, PersistedData["wins"][number]>();
-  [...cloud.wins, ...local.wins].forEach((win) => winsById.set(win.id, win));
-  return {
-    wins: Array.from(winsById.values()),
-    goals: { ...(cloud.goals || {}), ...(local.goals || {}) },
-    sources: Array.from(new Set([...(cloud.sources || []), ...(local.sources || [])])).filter(Boolean),
-  };
+  return { wins: state.wins, goals: state.goals, sources: state.sources, profile: state.profile };
 }
 
 function applyData(data: PersistedData): void {
   state.wins = data.wins || [];
   state.goals = data.goals || {};
   state.sources = data.sources && data.sources.length ? data.sources : [...DEFAULT_SOURCES];
+  state.profile = { username: data.profile?.username || "", avatar: data.profile?.avatar || "" };
+  state.profileForm = { ...state.profile };
   try {
-    localStorage.setItem(KEY, JSON.stringify({ wins: state.wins, goals: state.goals, sources: state.sources }));
+    localStorage.setItem(KEY, JSON.stringify({ wins: state.wins, goals: state.goals, sources: state.sources, profile: state.profile }));
   } catch {
     /* ignore */
   }
 }
 
+function fallbackUsername(session: Session): string {
+  const meta = session.user.user_metadata || {};
+  return String(meta.user_name || meta.name || meta.full_name || session.user.email?.split("@")[0] || "");
+}
+
 export async function signInGoogle(): Promise<void> {
   if (!sb) { state.authError = "Cloud sync isn't configured yet."; render(); return; }
+  state.authBusy = true; state.authError = ""; render();
   await sb.auth.signInWithOAuth({
     provider: "google",
     options: { redirectTo: window.location.origin + window.location.pathname },
@@ -47,7 +44,25 @@ export async function signInEmail(): Promise<void> {
   const { email, password } = state.authForm;
   if (!email || !password) { state.authError = "Enter your email and password."; render(); return; }
   state.authBusy = true; state.authError = ""; render();
-  const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+  const cleanEmail = email.trim();
+  const { error } = await sb.auth.signInWithPassword({ email: cleanEmail, password });
+  if (error && /invalid login credentials/i.test(error.message)) {
+    if (password.length < 6) {
+      state.authBusy = false;
+      state.authError = "Password must be at least 6 characters.";
+      render();
+      return;
+    }
+    const { data, error: signUpError } = await sb.auth.signUp({ email: cleanEmail, password });
+    state.authBusy = false;
+    if (signUpError) { state.authError = signUpError.message; render(); return; }
+    if (data.user && !data.session) {
+      state.showAuth = false; render();
+      showToast("Check your email to confirm your account");
+      return;
+    }
+    return;
+  }
   state.authBusy = false;
   if (error) { state.authError = error.message; render(); return; }
 }
@@ -83,9 +98,24 @@ async function onSignedIn(session: Session, event: string): Promise<void> {
     cloudLoaded = true;
     const local = currentData();
     const cloud = await cloudLoad();
-    const merged = mergeData(local, cloud);
-    applyData(merged);
-    cloudSave();
+    if (cloud === undefined) {
+      state.showAuth = false;
+      render();
+      showToast("Cloud sync unavailable. Keeping local data for now.");
+      return;
+    }
+    const isNewCloudUser = cloud === null;
+    if (cloud) {
+      applyData(cloud);
+    } else {
+      applyData(local);
+      cloudSave();
+    }
+    if (isNewCloudUser || !state.profile.username) {
+      state.profileForm = { username: state.profile.username || fallbackUsername(session), avatar: state.profile.avatar };
+      state.showProfileSetup = true;
+      state.editingProfile = false;
+    }
   }
   state.showAuth = false;
   render();

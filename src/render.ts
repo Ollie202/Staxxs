@@ -1,12 +1,12 @@
 import { state, save, showToast, gk, yw, doAddSource, setTab } from "./state";
 import { LIGHT, DARK, type Theme } from "./theme";
 import type { Tab } from "./types";
-import { MONTHS, CHART_TYPES } from "./constants";
+import { MONTHS, CHART_TYPES, OTHER_SOURCE } from "./constants";
 import { el, fmt, gid, $ } from "./dom";
 import { mkSelect, mkInput, mkPill, mkDropdown } from "./ui";
 import { renderChart } from "./chart";
 import { exportCSV, downloadCSV, importCSV } from "./csv";
-import { signInGoogle, signInEmail, signUpEmail, signOut } from "./auth";
+import { signInGoogle, signInEmail, signOut } from "./auth";
 import { cloudEnabled } from "./supabaseClient";
 
 // Logo lives in public/ so it's copied to the deploy root; BASE_URL keeps the
@@ -14,6 +14,8 @@ import { cloudEnabled } from "./supabaseClient";
 const LOGO_URL = import.meta.env.BASE_URL + "favicon-192.png";
 
 export function render(): void {
+  const prevScrollX = window.scrollX;
+  const prevScrollY = window.scrollY;
   const th: Theme = state.dark ? DARK : LIGHT;
   const wins = yw();
   const totalEarned = wins.reduce((s, w) => s + w.amount, 0);
@@ -42,7 +44,7 @@ export function render(): void {
 
   const app = $("#app")!;
   app.innerHTML = "";
-  app.style.cssText = "min-height:100vh;transition:background .3s,color .3s;overflow-x:hidden;";
+  app.style.cssText = "min-height:100vh;transition:background .3s,color .3s;overflow-x:hidden;overflow-anchor:none;";
   app.style.background = th.bg;
   app.style.color = th.text;
   app.style.fontFamily = "'DM Sans',sans-serif";
@@ -68,17 +70,20 @@ export function render(): void {
   brand.appendChild(el("img", { src: LOGO_URL, alt: "Staxx logo", width: "30", height: "30", style: { width: "30px", height: "30px", borderRadius: "8px", flexShrink: "0", boxShadow: "0 1px 4px rgba(0,0,0,.12)" } }));
   brand.appendChild(el("h1", { style: { fontFamily: "'Playfair Display',serif", fontSize: "26px", fontWeight: "700", margin: "0", color: th.text, letterSpacing: "-0.5px", lineHeight: "1" } }, "Staxx"));
   hdrL.appendChild(brand);
-  hdrL.appendChild(el("p", { style: { margin: "8px 0 0", fontSize: "12px", color: th.sub, lineHeight: "1.4" } }, "Track your monthly wins, set earning goals, and watch your bags stack up."));
+  if (state.tab === "home") {
+    hdrL.appendChild(el("p", { style: { margin: "8px 0 0", fontSize: "12px", color: th.sub, lineHeight: "1.4" } }, "Track your monthly wins, set earning goals, and watch your bags stack up."));
+  }
   const hdrR = el("div", { style: { display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" } });
 
-  const thBtn = el("button", { style: { width: "34px", height: "34px", borderRadius: "50%", border: "1px solid " + th.border, background: th.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }, onClick: () => { state.dark = !state.dark; save(); render(); } });
-  thBtn.innerHTML = state.dark ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + th.sub + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>' : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + th.sub + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  if (state.tab === "home") {
+    const thBtn = el("button", { style: { width: "34px", height: "34px", borderRadius: "50%", border: "1px solid " + th.border, background: th.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }, onClick: () => { state.dark = !state.dark; save(); render(); } });
+    thBtn.innerHTML = state.dark ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + th.sub + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>' : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + th.sub + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
 
-  const yrL = el("button", { style: { width: "32px", height: "32px", borderRadius: "50%", border: "1px solid " + th.border, background: th.card, cursor: "pointer", fontSize: "14px", color: th.sub, display: "flex", alignItems: "center", justifyContent: "center" }, onClick: () => { state.year--; render(); } }, "←");
-  const yrR = el("button", { style: { width: "32px", height: "32px", borderRadius: "50%", border: "1px solid " + th.border, background: th.card, cursor: "pointer", fontSize: "14px", color: th.sub, display: "flex", alignItems: "center", justifyContent: "center" }, onClick: () => { state.year++; render(); } }, "→");
-  const yrSpan = el("span", { style: { fontFamily: "'Playfair Display',serif", fontSize: "20px", fontWeight: "600", color: th.text, minWidth: "48px", textAlign: "center" } }, String(state.year));
-
-  hdrR.append(thBtn, yrL, yrSpan, yrR);
+    const yrL = el("button", { style: { width: "32px", height: "32px", borderRadius: "50%", border: "1px solid " + th.border, background: th.card, cursor: "pointer", fontSize: "14px", color: th.sub, display: "flex", alignItems: "center", justifyContent: "center" }, onClick: () => { state.year--; render(); } }, "←");
+    const yrR = el("button", { style: { width: "32px", height: "32px", borderRadius: "50%", border: "1px solid " + th.border, background: th.card, cursor: "pointer", fontSize: "14px", color: th.sub, display: "flex", alignItems: "center", justifyContent: "center" }, onClick: () => { state.year++; render(); } }, "→");
+    const yrSpan = el("span", { style: { fontFamily: "'Playfair Display',serif", fontSize: "20px", fontWeight: "600", color: th.text, minWidth: "48px", textAlign: "center" } }, String(state.year));
+    hdrR.append(thBtn, yrL, yrSpan, yrR);
+  }
   hdr.append(hdrL, hdrR);
   app.appendChild(hdr);
 
@@ -272,7 +277,9 @@ export function render(): void {
     state.sources.forEach((s) => {
       const tag = el("div", { style: { display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px 4px 10px", borderRadius: "8px", background: th.card, border: "1px solid " + th.border, fontSize: "11px", color: th.text } });
       tag.appendChild(el("span", {}, s));
-      tag.appendChild(el("button", { style: { width: "16px", height: "16px", borderRadius: "4px", border: "none", background: "transparent", cursor: "pointer", fontSize: "10px", color: th.muted, display: "flex", alignItems: "center", justifyContent: "center" }, onClick: () => { if (state.sources.length <= 1) { showToast("Need at least one source"); return; } const used = state.wins.filter((w) => w.source === s).length; state.confirm = { title: 'Remove "' + s + '"?', message: used > 0 ? used + " winning" + (used === 1 ? "" : "s") + " using this source will be moved to another source." : "No winnings use this source.", confirmLabel: "Remove", onConfirm: () => { const fb = state.sources.find((x) => x !== s) || "Other"; state.sources = state.sources.filter((x) => x !== s); state.wins = state.wins.map((w) => w.source === s ? { ...w, source: fb } : w); save(); render(); showToast('Removed "' + s + '"'); } }; render(); } }, "×"));
+      if (s !== OTHER_SOURCE) {
+        tag.appendChild(el("button", { style: { width: "16px", height: "16px", borderRadius: "4px", border: "none", background: "transparent", cursor: "pointer", fontSize: "10px", color: th.muted, display: "flex", alignItems: "center", justifyContent: "center" }, onClick: () => { const used = state.wins.filter((w) => w.source === s).length; state.confirm = { title: 'Remove "' + s + '"?', message: used > 0 ? used + " winning" + (used === 1 ? "" : "s") + " using this source will be moved to Other." : "No winnings use this source.", confirmLabel: "Remove", onConfirm: () => { state.sources = state.sources.filter((x) => x !== s); if (!state.sources.includes(OTHER_SOURCE)) state.sources.push(OTHER_SOURCE); state.wins = state.wins.map((w) => w.source === s ? { ...w, source: OTHER_SOURCE } : w); if (state.addForm.source === s) state.addForm.source = OTHER_SOURCE; if (state.editForm.source === s) state.editForm.source = OTHER_SOURCE; save(); render(); showToast('Removed "' + s + '"'); } }; render(); } }, "×"));
+      }
       tags.appendChild(tag);
     });
     sm.appendChild(tags);
@@ -358,12 +365,18 @@ export function render(): void {
 
   // Auth modal
   if (state.showAuth) app.appendChild(renderAuthModal(th));
+  if (state.showProfileSetup && state.user) app.appendChild(renderProfileSetupModal(th));
 
   // Confirmation popup for any destructive action (delete / remove / reset)
   if (state.confirm) app.appendChild(renderConfirm(th));
 
   // Render chart
   renderChart(th, wins);
+  requestAnimationFrame(() => {
+    if (window.scrollX !== prevScrollX || window.scrollY !== prevScrollY) {
+      window.scrollTo(prevScrollX, prevScrollY);
+    }
+  });
 }
 
 /** Floating liquid-glass navigation bar (bottom, same on mobile + desktop). */
@@ -509,9 +522,18 @@ function renderProfile(th: Theme): HTMLElement {
   const acct = card("Account");
   if (state.user) {
     const row = el("div", { style: { display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" } });
-    row.appendChild(el("div", { style: { width: "40px", height: "40px", borderRadius: "50%", background: th.accent, color: "#FFFCF7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "700", flexShrink: "0" } }, ((state.user.email || "?")[0] || "?").toUpperCase()));
+    const avatar = el("div", { style: { width: "44px", height: "44px", borderRadius: "50%", background: th.accent, color: "#FFFCF7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "700", flexShrink: "0", overflow: "hidden" } });
+    if (state.profile.avatar) avatar.appendChild(el("img", { src: state.profile.avatar, alt: "Profile picture", style: { width: "100%", height: "100%", objectFit: "cover" } }));
+    else avatar.textContent = ((state.profile.username || state.user.email || "?")[0] || "?").toUpperCase();
+    row.appendChild(avatar);
     const info = el("div", { style: { minWidth: "0" } });
-    info.appendChild(el("div", { style: { fontSize: "13px", fontWeight: "600", color: th.text, wordBreak: "break-all" } }, state.user.email || ""));
+    const nameRow = el("div", { style: { display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" } });
+    nameRow.appendChild(el("div", { style: { fontSize: "14px", fontWeight: "700", color: th.text, wordBreak: "break-word" } }, state.profile.username || "Set username"));
+    const editProfile = el("button", { type: "button", title: "Edit profile", style: { width: "26px", height: "26px", borderRadius: "8px", border: "1px solid " + th.border, background: "transparent", color: th.accent, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: "0" }, onClick: () => { state.profileForm = { ...state.profile }; state.showProfileSetup = true; state.editingProfile = true; render(); } });
+    editProfile.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+    nameRow.appendChild(editProfile);
+    info.appendChild(nameRow);
+    info.appendChild(el("div", { style: { fontSize: "12px", fontWeight: "500", color: th.sub, wordBreak: "break-all" } }, state.user.email || ""));
     info.appendChild(el("div", { style: { fontSize: "11px", color: th.green, marginTop: "2px" } }, "● Synced across devices"));
     row.appendChild(info);
     acct.appendChild(row);
@@ -568,19 +590,64 @@ function renderConfirm(th: Theme): HTMLElement {
 }
 
 /** Build the sign-in / sign-up modal overlay. */
+function renderProfileSetupModal(th: Theme): HTMLElement {
+  const ov = el("div", { style: { position: "fixed", inset: "0", background: "rgba(0,0,0,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "205", padding: "20px", animation: "fadeIn .2s ease" } });
+  const card = el("div", { style: { background: th.card, border: "1px solid " + th.border, borderRadius: "16px", padding: "26px", width: "100%", maxWidth: "360px", boxShadow: "0 12px 40px rgba(0,0,0,.25)" } });
+  card.appendChild(el("h2", { style: { fontFamily: "'Playfair Display',serif", fontSize: "22px", margin: "0 0 4px", color: th.text } }, state.editingProfile ? "Edit profile" : "Set up profile"));
+  card.appendChild(el("p", { style: { fontSize: "12px", color: th.sub, margin: "0 0 18px", lineHeight: "1.5" } }, "Choose how your Staxx profile looks across devices."));
+
+  const avatarWrap = el("div", { style: { display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" } });
+  const preview = el("div", { style: { width: "58px", height: "58px", borderRadius: "50%", background: th.accent, color: "#FFFCF7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "700", overflow: "hidden", flexShrink: "0" } });
+  if (state.profileForm.avatar) preview.appendChild(el("img", { src: state.profileForm.avatar, alt: "Profile picture preview", style: { width: "100%", height: "100%", objectFit: "cover" } }));
+  else preview.textContent = ((state.profileForm.username || state.user?.email || "?")[0] || "?").toUpperCase();
+  avatarWrap.appendChild(preview);
+  const fileLabel = el("label", { style: { display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "9px 13px", borderRadius: "10px", border: "1px solid " + th.border, color: th.accent, fontSize: "12px", fontWeight: "700", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" } }, "Change photo");
+  const fileInput = el("input", { type: "file", accept: "image/*", style: { display: "none" } }) as HTMLInputElement;
+  fileInput.onchange = (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { state.profileForm.avatar = String(ev.target?.result || ""); render(); };
+    reader.readAsDataURL(file);
+  };
+  fileLabel.appendChild(fileInput);
+  avatarWrap.appendChild(fileLabel);
+  if (state.profileForm.avatar) {
+    avatarWrap.appendChild(el("button", { type: "button", style: { border: "none", background: "transparent", color: th.muted, fontSize: "12px", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }, onClick: () => { state.profileForm.avatar = ""; render(); } }, "Remove"));
+  }
+  card.appendChild(avatarWrap);
+
+  card.appendChild(mkInput(state.profileForm.username, "Your username", (v) => { state.profileForm.username = v; }, "Username", "text", th));
+  const saveBtn = el("button", { style: { width: "100%", padding: "12px", borderRadius: "10px", border: "none", background: th.accent, color: "#FFFCF7", fontSize: "13px", fontWeight: "700", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", marginTop: "14px" }, onClick: () => {
+    const username = state.profileForm.username.trim();
+    if (!username) { showToast("Add a username"); return; }
+    state.profile = { username, avatar: state.profileForm.avatar };
+    state.profileForm = { ...state.profile };
+    state.showProfileSetup = false;
+    state.editingProfile = false;
+    save();
+    render();
+  } }, "Save profile");
+  card.appendChild(saveBtn);
+  if (state.editingProfile) {
+    card.appendChild(el("button", { style: { width: "100%", padding: "8px", borderRadius: "8px", border: "none", background: "transparent", color: th.muted, fontSize: "11px", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", marginTop: "6px" }, onClick: () => { state.showProfileSetup = false; state.editingProfile = false; state.profileForm = { ...state.profile }; render(); } }, "Cancel"));
+  }
+  ov.appendChild(card);
+  return ov;
+}
+
 function renderAuthModal(th: Theme): HTMLElement {
   const ov = el("div", { style: { position: "fixed", inset: "0", background: "rgba(0,0,0,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "200", padding: "20px", animation: "fadeIn .2s ease" } });
   ov.addEventListener("click", (e) => { if (e.target === ov) { state.showAuth = false; render(); } });
   const card = el("div", { style: { background: th.card, border: "1px solid " + th.border, borderRadius: "16px", padding: "26px", width: "100%", maxWidth: "360px", boxShadow: "0 12px 40px rgba(0,0,0,.25)", maxHeight: "90vh", overflowY: "auto" } });
-  const signup = state.authMode === "signup";
-  card.appendChild(el("h2", { style: { fontFamily: "'Playfair Display',serif", fontSize: "22px", margin: "0 0 4px", color: th.text } }, signup ? "Create account" : "Welcome back"));
+  card.appendChild(el("h2", { style: { fontFamily: "'Playfair Display',serif", fontSize: "22px", margin: "0 0 4px", color: th.text } }, "Continue to Staxx"));
   card.appendChild(el("p", { style: { fontSize: "12px", color: th.sub, margin: "0 0 18px" } }, "Sync your bags across devices"));
   if (!cloudEnabled()) {
     card.appendChild(el("div", { style: { fontSize: "11px", color: th.danger, background: th.danger + "18", border: "1px solid " + th.danger, borderRadius: "8px", padding: "10px", marginBottom: "14px", lineHeight: "1.5" } }, "Cloud sync isn't set up yet. Add your Supabase env vars (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) — see the README."));
   }
   // Google
-  const g = el("button", { style: { width: "100%", padding: "11px", borderRadius: "10px", border: "1px solid " + th.inputBorder, background: th.input, color: th.text, fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: "9px", marginBottom: "16px" }, onClick: () => signInGoogle() });
-  g.innerHTML = '<svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571.001-.001.002-.001.003-.002l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg> Continue with Google';
+  const g = el("button", { disabled: state.authBusy, style: { width: "100%", padding: "11px", borderRadius: "10px", border: "1px solid " + th.inputBorder, background: th.input, color: th.text, fontSize: "13px", fontWeight: "600", cursor: state.authBusy ? "default" : "pointer", fontFamily: "'DM Sans',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: "9px", marginBottom: "16px", opacity: state.authBusy ? "0.65" : "1" }, onClick: () => { if (!state.authBusy) signInGoogle(); } });
+  g.innerHTML = state.authBusy ? "Signing you in..." : '<svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571.001-.001.002-.001.003-.002l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg> Continue with Google';
   card.appendChild(g);
   // divider
   const dv = el("div", { style: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" } });
@@ -591,8 +658,7 @@ function renderAuthModal(th: Theme): HTMLElement {
   card.appendChild(el("div", { style: { height: "10px" } }));
   card.appendChild(mkInput(state.authForm.password, "••••••", (v) => { state.authForm.password = v; }, "Password", "password", th));
   if (state.authError) card.appendChild(el("div", { style: { fontSize: "11px", color: th.danger, marginTop: "10px", lineHeight: "1.4" } }, state.authError));
-  card.appendChild(el("button", { style: { width: "100%", padding: "12px", borderRadius: "10px", border: "none", background: th.accent, color: "#FFFCF7", fontSize: "13px", fontWeight: "700", cursor: state.authBusy ? "default" : "pointer", fontFamily: "'DM Sans',sans-serif", marginTop: "14px", opacity: state.authBusy ? "0.6" : "1" }, onClick: () => { if (state.authBusy) return; signup ? signUpEmail() : signInEmail(); } }, state.authBusy ? "Please wait…" : signup ? "Create account" : "Sign in"));
-  card.appendChild(el("button", { style: { width: "100%", padding: "10px", borderRadius: "8px", border: "none", background: "transparent", color: th.sub, fontSize: "11px", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", marginTop: "6px" }, onClick: () => { state.authMode = signup ? "signin" : "signup"; state.authError = ""; render(); } }, signup ? "Already have an account? Sign in" : "New here? Create an account"));
+  card.appendChild(el("button", { disabled: state.authBusy, style: { width: "100%", padding: "12px", borderRadius: "10px", border: "none", background: th.accent, color: "#FFFCF7", fontSize: "13px", fontWeight: "700", cursor: state.authBusy ? "default" : "pointer", fontFamily: "'DM Sans',sans-serif", marginTop: "14px", opacity: state.authBusy ? "0.6" : "1" }, onClick: () => { if (!state.authBusy) signInEmail(); } }, state.authBusy ? "Signing you in..." : "Continue with email"));
   card.appendChild(el("button", { style: { width: "100%", padding: "6px", borderRadius: "8px", border: "none", background: "transparent", color: th.muted, fontSize: "11px", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", marginTop: "2px" }, onClick: () => { state.showAuth = false; render(); } }, "Cancel"));
   ov.appendChild(card);
   return ov;
