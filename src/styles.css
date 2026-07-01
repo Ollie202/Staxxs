@@ -1,0 +1,19 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; overflow-x: hidden; width: 100%; font-family: 'DM Sans', sans-serif; }
+* { -webkit-tap-highlight-color: transparent; }
+input, select, textarea { font-size: 16px !important; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reset-btn { opacity: .4; transition: opacity .3s; }
+.reset-btn:hover { opacity: 1; }
+.reset-tooltip {
+  opacity: 0; transition: opacity .2s; pointer-events: none; position: absolute;
+  bottom: 100%; right: 0; margin-bottom: 6px; white-space: nowrap; font-size: 10px;
+  padding: 4px 10px; border-radius: 6px; z-index: 10;
+}
+.reset-btn:hover .reset-tooltip { opacity: 1; }
+canvas { max-width: 100% !important; }
