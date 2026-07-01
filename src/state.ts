@@ -5,6 +5,7 @@ import { render } from "./render";
 
 export const state: State = {
   dark: localStorage.getItem(DARK_KEY) === "true",
+  tab: "home",
   year: new Date().getFullYear(),
   chartType: "Bar",
   wins: [],

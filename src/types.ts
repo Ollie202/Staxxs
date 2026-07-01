@@ -32,6 +32,7 @@ export interface AuthForm {
 export type CsvMode = "export" | "import";
 export type SourceView = "yearly" | "monthly";
 export type AuthMode = "signin" | "signup";
+export type Tab = "home" | "insights" | "profile";
 export type ResetType = "month" | "year" | null;
 
 /** Generic confirmation dialog for any destructive action. */
@@ -45,6 +46,7 @@ export interface ConfirmDialog {
 
 export interface State {
   dark: boolean;
+  tab: Tab;
   year: number;
   chartType: string;
   wins: Win[];

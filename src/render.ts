@@ -1,5 +1,6 @@
 import { state, save, showToast, gk, yw, doAddSource } from "./state";
 import { LIGHT, DARK, type Theme } from "./theme";
+import type { Tab } from "./types";
 import { MONTHS, CHART_TYPES } from "./constants";
 import { el, fmt, gid, $ } from "./dom";
 import { mkSelect, mkInput, mkPill, mkDropdown } from "./ui";
@@ -147,6 +148,7 @@ export function render(): void {
     app.appendChild(cp);
   }
 
+  if (state.tab === "home") {
   // Goal Card
   const gc = el("div", { style: { margin: "20px 20px 0", background: th.card, border: "1px solid " + th.border, borderRadius: "14px", padding: "18px" } });
   const gcTop = el("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" } });
@@ -407,6 +409,16 @@ export function render(): void {
   const footer = el("div", { style: { textAlign: "center", padding: "0 20px 24px" } });
   footer.appendChild(el("p", { style: { fontSize: "10px", color: th.muted, margin: "0", lineHeight: "1.5" } }, state.user ? "Synced to your account — " + state.user.email : cloudEnabled() ? "Sign in to sync your bags across devices. Your data is saved locally too." : "Your data lives in this browser. Export CSV regularly to back up or switch devices."));
   app.appendChild(footer);
+  } else if (state.tab === "insights") {
+    app.appendChild(renderInsights(th));
+  } else {
+    app.appendChild(renderProfile(th));
+  }
+
+  // Spacer so content clears the floating nav bar
+  app.appendChild(el("div", { style: { height: "96px" } }));
+  // Floating glass navigation bar
+  app.appendChild(renderNav(th));
 
   // Auth modal
   if (state.showAuth) app.appendChild(renderAuthModal(th));
@@ -416,6 +428,140 @@ export function render(): void {
 
   // Render chart
   renderChart(th, wins);
+}
+
+/** Floating liquid-glass navigation bar (fixed at the bottom, same on mobile + desktop). */
+function renderNav(th: Theme): HTMLElement {
+  const items: { id: Tab; label: string; icon: string }[] = [
+    { id: "home", label: "Home", icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+    { id: "insights", label: "Insights", icon: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>' },
+    { id: "profile", label: "Profile", icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
+  ];
+  const bar = el("div", { style: { position: "fixed", bottom: "18px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", padding: "7px", background: th.card + "CC", backdropFilter: "blur(20px) saturate(180%)", WebkitBackdropFilter: "blur(20px) saturate(180%)", border: "1px solid " + th.border + "AA", borderRadius: "999px", boxShadow: "0 10px 32px rgba(0,0,0,.28)", zIndex: "150" } });
+  items.forEach((it) => {
+    const active = state.tab === it.id;
+    const btn = el("button", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", minWidth: "64px", padding: "8px 16px", borderRadius: "999px", border: "none", cursor: "pointer", background: active ? th.accent : "transparent", color: active ? "#FFFCF7" : th.sub, fontFamily: "'DM Sans',sans-serif", transition: "background .2s, color .2s" }, onClick: () => { state.tab = it.id; state.showCSVPanel = false; window.scrollTo({ top: 0 }); render(); } });
+    const ic = el("span", { style: { display: "flex" } });
+    ic.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + it.icon + "</svg>";
+    btn.append(ic, el("span", { style: { fontSize: "10px", fontWeight: active ? "700" : "500" } }, it.label));
+    bar.appendChild(btn);
+  });
+  return bar;
+}
+
+/** Insights view — all-time performance across every year. */
+function renderInsights(th: Theme): HTMLElement {
+  const wrap = el("div", { style: { padding: "8px 20px 0" } });
+  wrap.appendChild(el("h2", { style: { fontFamily: "'Playfair Display',serif", fontSize: "22px", fontWeight: "700", margin: "8px 0 4px", color: th.text } }, "Insights"));
+  wrap.appendChild(el("p", { style: { fontSize: "12px", color: th.sub, margin: "0 0 16px" } }, "Your all-time performance across every year."));
+  const all = state.wins;
+  if (all.length === 0) {
+    wrap.appendChild(el("div", { style: { textAlign: "center", padding: "48px 16px", color: th.muted, fontSize: "13px", background: th.card, border: "1px solid " + th.border, borderRadius: "14px" } }, "No winnings logged yet. Head to Home and log your first bag."));
+    return wrap;
+  }
+  const total = all.reduce((s, w) => s + w.amount, 0);
+  const byYear: Record<number, number> = {};
+  all.forEach((w) => { byYear[w.year] = (byYear[w.year] || 0) + w.amount; });
+  const years = Object.entries(byYear).map(([y, v]) => [Number(y), v] as [number, number]).sort((a, b) => b[0] - a[0]);
+  const bestYear = years.reduce((b, [y, v]) => (v > b.v ? { y, v } : b), { y: 0, v: 0 });
+  const byMonth: Record<string, number> = {};
+  all.forEach((w) => { const k = w.month + " " + w.year; byMonth[k] = (byMonth[k] || 0) + w.amount; });
+  const bestMonth = Object.entries(byMonth).reduce((b, [k, v]) => (v > b.v ? { k, v } : b), { k: "—", v: 0 });
+  const bySrc: Record<string, number> = {};
+  all.forEach((w) => { bySrc[w.source] = (bySrc[w.source] || 0) + w.amount; });
+  const srcSorted = Object.entries(bySrc).sort((a, b) => b[1] - a[1]);
+  const activeMonths = Object.keys(byMonth).length;
+  const avg = activeMonths ? total / activeMonths : 0;
+
+  const cards: { label: string; value: string; ac: string }[] = [
+    { label: "Lifetime Earned", value: fmt(total), ac: th.accent },
+    { label: "Total Deals", value: String(all.length), ac: th.sub },
+    { label: "Best Year", value: bestYear.y ? bestYear.y + " (" + fmt(bestYear.v) + ")" : "—", ac: th.green },
+    { label: "Best Month", value: bestMonth.v > 0 ? bestMonth.k + " (" + fmt(bestMonth.v) + ")" : "—", ac: state.dark ? "#DEB88A" : "#D4A574" },
+    { label: "Top Source", value: srcSorted[0] ? srcSorted[0][0] : "—", ac: state.dark ? "#C0724D" : "#A0522D" },
+    { label: "Avg / Active Month", value: fmt(avg), ac: th.sub },
+  ];
+  const grid = el("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "10px", marginBottom: "18px" } });
+  cards.forEach((c) => {
+    const card = el("div", { style: { background: th.card, border: "1px solid " + th.border, borderRadius: "12px", padding: "14px 16px", position: "relative", overflow: "hidden" } });
+    card.appendChild(el("div", { style: { position: "absolute", top: "0", left: "0", width: "3px", height: "100%", background: c.ac, borderRadius: "12px 0 0 12px" } }));
+    card.appendChild(el("div", { style: { fontSize: "10px", color: th.sub, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "5px" } }, c.label));
+    card.appendChild(el("div", { style: { fontSize: "16px", fontWeight: "700", color: th.accent, wordBreak: "break-word" } }, c.value));
+    grid.appendChild(card);
+  });
+  wrap.appendChild(grid);
+
+  wrap.appendChild(el("div", { style: { fontSize: "14px", fontWeight: "600", color: th.text, margin: "4px 0 10px" } }, "By Year"));
+  const maxYear = Math.max(...years.map(([, v]) => v));
+  const yc = el("div", { style: { background: th.card, border: "1px solid " + th.border, borderRadius: "12px", padding: "16px", display: "flex", flexDirection: "column", gap: "12px" } });
+  years.forEach(([y, v]) => {
+    const row = el("div", {});
+    const top = el("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: "4px" } });
+    top.appendChild(el("span", { style: { fontSize: "12px", color: th.text, fontWeight: "600" } }, String(y)));
+    top.appendChild(el("span", { style: { fontSize: "12px", color: th.sub, fontWeight: "600" } }, fmt(v)));
+    row.appendChild(top);
+    const bar = el("div", { style: { height: "8px", background: th.barBg, borderRadius: "4px", overflow: "hidden" } });
+    bar.appendChild(el("div", { style: { width: (maxYear ? (v / maxYear) * 100 : 0) + "%", height: "100%", background: th.accentGrad, borderRadius: "4px", transition: "width .5s ease" } }));
+    row.appendChild(bar);
+    yc.appendChild(row);
+  });
+  wrap.appendChild(yc);
+  return wrap;
+}
+
+/** Profile view — account, appearance, data, and about. */
+function renderProfile(th: Theme): HTMLElement {
+  const wrap = el("div", { style: { padding: "8px 20px 0" } });
+  wrap.appendChild(el("h2", { style: { fontFamily: "'Playfair Display',serif", fontSize: "22px", fontWeight: "700", margin: "8px 0 16px", color: th.text } }, "Profile"));
+  const card = (title: string) => {
+    const c = el("div", { style: { background: th.card, border: "1px solid " + th.border, borderRadius: "14px", padding: "18px", marginBottom: "14px" } });
+    c.appendChild(el("div", { style: { fontSize: "11px", color: th.sub, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" } }, title));
+    return c;
+  };
+  const primaryBtn = (label: string, onClick: () => void) => el("button", { style: { width: "100%", padding: "12px", borderRadius: "10px", border: "none", background: th.accent, color: "#FFFCF7", fontSize: "13px", fontWeight: "700", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }, onClick }, label);
+  const outlineBtn = (label: string, onClick: () => void) => el("button", { style: { flex: "1", minWidth: "120px", padding: "11px", borderRadius: "10px", border: "1px solid " + th.border, background: "transparent", color: th.text, fontSize: "12px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }, onClick }, label);
+
+  // Account
+  const acct = card("Account");
+  if (state.user) {
+    const row = el("div", { style: { display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" } });
+    row.appendChild(el("div", { style: { width: "40px", height: "40px", borderRadius: "50%", background: th.accent, color: "#FFFCF7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "700", flexShrink: "0" } }, ((state.user.email || "?")[0] || "?").toUpperCase()));
+    const info = el("div", { style: { minWidth: "0" } });
+    info.appendChild(el("div", { style: { fontSize: "13px", fontWeight: "600", color: th.text, wordBreak: "break-all" } }, state.user.email || ""));
+    info.appendChild(el("div", { style: { fontSize: "11px", color: th.green, marginTop: "2px" } }, "● Synced across devices"));
+    row.appendChild(info);
+    acct.appendChild(row);
+    acct.appendChild(el("button", { style: { width: "100%", padding: "11px", borderRadius: "10px", border: "1px solid " + th.border, background: "transparent", color: th.accent, fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }, onClick: () => signOut() }, "Sign out"));
+  } else {
+    acct.appendChild(el("p", { style: { fontSize: "12px", color: th.sub, margin: "0 0 12px", lineHeight: "1.5" } }, cloudEnabled() ? "Sign in to sync your winnings across all your devices." : "Cloud sync isn't set up yet — Staxx still works and saves everything locally."));
+    acct.appendChild(primaryBtn("Sign in", () => { state.showAuth = true; state.authError = ""; render(); }));
+  }
+  wrap.appendChild(acct);
+
+  // Appearance
+  const appear = card("Appearance");
+  const themeRow = el("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } });
+  themeRow.appendChild(el("span", { style: { fontSize: "13px", color: th.text } }, state.dark ? "Dark mode" : "Light mode"));
+  themeRow.appendChild(el("button", { style: { padding: "8px 14px", borderRadius: "10px", border: "1px solid " + th.border, background: "transparent", color: th.accent, fontSize: "12px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }, onClick: () => { state.dark = !state.dark; save(); render(); } }, state.dark ? "Switch to light" : "Switch to dark"));
+  appear.appendChild(themeRow);
+  wrap.appendChild(appear);
+
+  // Data
+  const data = card("Data");
+  const dbtns = el("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } });
+  dbtns.appendChild(outlineBtn("Export CSV", () => { state.tab = "home"; state.showCSVPanel = true; state.csvMode = "export"; state.csvText = ""; render(); }));
+  dbtns.appendChild(outlineBtn("Import CSV", () => { state.tab = "home"; state.showCSVPanel = true; state.csvMode = "import"; state.csvText = ""; render(); }));
+  data.appendChild(dbtns);
+  wrap.appendChild(data);
+
+  // About
+  const about = card("About");
+  about.appendChild(el("div", { style: { fontSize: "14px", fontWeight: "700", color: th.text, fontFamily: "'Playfair Display',serif" } }, "Staxx"));
+  about.appendChild(el("p", { style: { fontSize: "12px", color: th.sub, margin: "4px 0 0", lineHeight: "1.5" } }, "Track your monthly wins, set earning goals, and watch your bags stack up."));
+  about.appendChild(el("div", { style: { fontSize: "11px", color: th.muted, marginTop: "8px" } }, "v1.0.0"));
+  wrap.appendChild(about);
+
+  return wrap;
 }
 
 /** Generic confirmation popup for any destructive action (guards against mis-taps). */
