@@ -37,6 +37,7 @@ export const state: State = {
   user: null,
   showAuth: false,
   showAccount: false,
+  authMode: "signin",
   authBusy: false,
   authError: "",
   authForm: { email: "", password: "" },

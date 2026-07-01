@@ -36,6 +36,7 @@ export interface UserProfile {
 
 export type CsvMode = "export" | "import";
 export type SourceView = "yearly" | "monthly";
+export type AuthMode = "signin" | "signup";
 export type Tab = "home" | "insights" | "profile";
 export type ResetType = "month" | "year" | null;
 
@@ -77,6 +78,7 @@ export interface State {
   user: User | null;
   showAuth: boolean;
   showAccount: boolean;
+  authMode: AuthMode;
   authBusy: boolean;
   authError: string;
   authForm: AuthForm;
