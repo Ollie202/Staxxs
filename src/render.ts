@@ -8,6 +8,10 @@ import { exportCSV, downloadCSV, importCSV } from "./csv";
 import { signInGoogle, signInEmail, signUpEmail, signOut } from "./auth";
 import { cloudEnabled } from "./supabaseClient";
 
+// Logo lives in public/ so it's copied to the deploy root; BASE_URL keeps the
+// path correct on both the Vercel root and the GitHub Pages /Staxx/ subpath.
+const LOGO_URL = import.meta.env.BASE_URL + "favicon-192.png";
+
 export function render(): void {
   const th: Theme = state.dark ? DARK : LIGHT;
   const wins = yw();
@@ -49,9 +53,12 @@ export function render(): void {
 
   // Header
   const hdr = el("div", { style: { padding: "28px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" } });
-  const hdrL = el("div", {});
-  hdrL.appendChild(el("h1", { style: { fontFamily: "'Playfair Display',serif", fontSize: "28px", fontWeight: "700", margin: "0", color: th.text, letterSpacing: "-0.5px" } }, "Staxx"));
-  hdrL.appendChild(el("p", { style: { margin: "4px 0 0", fontSize: "12px", color: th.sub } }, "Track your wins, stack your bags"));
+  const hdrL = el("div", { style: { display: "flex", alignItems: "center", gap: "12px" } });
+  hdrL.appendChild(el("img", { src: LOGO_URL, alt: "Staxx logo", width: "46", height: "46", style: { width: "46px", height: "46px", borderRadius: "11px", flexShrink: "0", boxShadow: "0 2px 8px rgba(0,0,0,.12)" } }));
+  const hdrText = el("div", {});
+  hdrText.appendChild(el("h1", { style: { fontFamily: "'Playfair Display',serif", fontSize: "28px", fontWeight: "700", margin: "0", color: th.text, letterSpacing: "-0.5px" } }, "Staxx"));
+  hdrText.appendChild(el("p", { style: { margin: "4px 0 0", fontSize: "12px", color: th.sub } }, "Track your wins, stack your bags"));
+  hdrL.appendChild(hdrText);
   const hdrR = el("div", { style: { display: "flex", gap: "6px", alignItems: "center" } });
 
   const csvBtn = el("button", { style: { width: "34px", height: "34px", borderRadius: "50%", border: "1px solid " + th.border, background: th.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }, onClick: () => { state.showCSVPanel = !state.showCSVPanel; state.csvMode = "export"; state.csvText = ""; render(); } });
