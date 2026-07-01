@@ -437,7 +437,7 @@ function renderNav(th: Theme): HTMLElement {
     { id: "insights", label: "Insights", icon: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>' },
     { id: "profile", label: "Profile", icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
   ];
-  const bar = el("div", { style: { position: "fixed", bottom: "8px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", padding: "6px", background: th.card + "CC", backdropFilter: "blur(20px) saturate(180%)", WebkitBackdropFilter: "blur(20px) saturate(180%)", border: "1px solid " + th.border + "AA", borderRadius: "999px", boxShadow: "0 10px 32px rgba(0,0,0,.28)", zIndex: "150" } });
+  const bar = el("div", { style: { position: "fixed", bottom: "0", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px", padding: "6px", background: th.card + "CC", backdropFilter: "blur(20px) saturate(180%)", WebkitBackdropFilter: "blur(20px) saturate(180%)", border: "1px solid " + th.border + "AA", borderRadius: "999px", zIndex: "150" } });
   items.forEach((it) => {
     const active = state.tab === it.id;
     const btn = el("button", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", minWidth: "64px", padding: "8px 16px", borderRadius: "999px", border: "none", cursor: "pointer", background: active ? th.accent : "transparent", color: active ? "#FFFCF7" : th.sub, fontFamily: "'DM Sans',sans-serif", transition: "background .2s, color .2s" }, onClick: () => { state.tab = it.id; state.showCSVPanel = false; window.scrollTo({ top: 0 }); render(); } });
