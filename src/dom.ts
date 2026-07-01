@@ -32,6 +32,9 @@ export function el(tag: string, attrs?: Attrs, children?: Children): HTMLElement
         e.addEventListener(k.slice(2).toLowerCase(), v as EventListener);
       } else if (k === "innerHTML") {
         e.innerHTML = v as string;
+      } else if (typeof v === "boolean") {
+        (e as unknown as Record<string, boolean>)[k] = v;
+        if (v) e.setAttribute(k, "");
       } else {
         e.setAttribute(k, v as string);
       }

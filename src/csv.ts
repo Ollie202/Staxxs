@@ -1,8 +1,38 @@
 import { state, showToast, save } from "./state";
-import { MONTHS } from "./constants";
-import { gid, escRe } from "./dom";
+import { MONTHS, OTHER_SOURCE } from "./constants";
+import { gid } from "./dom";
 import { render } from "./render";
 import type { Goals, Win } from "./types";
+
+function csvText(value: string | number): string {
+  const raw = String(value).replace(/\r?\n/g, " ");
+  const safe = /^[=+\-@]/.test(raw) ? "'" + raw : raw;
+  return /[",\r\n;\t]/.test(safe) ? '"' + safe.replace(/"/g, '""') + '"' : safe;
+}
+
+function parseCsvLine(line: string, delim: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (quoted && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (ch === delim && !quoted) {
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map((part) => part.trim());
+}
 
 export function exportCSV(): void {
   if (state.wins.length === 0 && Object.keys(state.goals).length === 0) {
@@ -13,8 +43,7 @@ export function exportCSV(): void {
   [...state.wins]
     .sort((a, b) => a.year - b.year || MONTHS.indexOf(a.month) - MONTHS.indexOf(b.month))
     .forEach((w) => {
-      const proj = w.project.includes(",") ? '"' + w.project + '"' : w.project;
-      rows.push(w.year + "," + w.month + "," + proj + "," + w.amount + "," + w.source);
+      rows.push([w.year, w.month, w.project, w.amount, w.source].map(csvText).join(","));
     });
   const ge = Object.entries(state.goals).sort();
   if (ge.length > 0) {
@@ -22,7 +51,7 @@ export function exportCSV(): void {
     rows.push("GOAL,Year,Month,Target");
     ge.forEach(([k, t]) => {
       const [yr, mo] = k.split("-");
-      rows.push("GOAL," + yr + "," + mo + "," + t);
+      rows.push(["GOAL", yr, mo, t].map(csvText).join(","));
     });
   }
   state.csvText = rows.join("\n");
@@ -75,7 +104,7 @@ export function importCSV(): void {
     if (lower.startsWith("goal" + delim + "year") || lower.startsWith("goal,year") || lower.startsWith("goal;year") || lower.startsWith("goal\tyear")) continue;
     // Parse GOAL rows (case-insensitive)
     if (lower.startsWith("goal" + delim) || lower.startsWith("goal,") || lower.startsWith("goal;") || lower.startsWith("goal\t")) {
-      const p = line.split(delim.length ? delim : ",");
+      const p = parseCsvLine(line, delim);
       if (p.length >= 4) {
         const yr = parseInt(p[1]), mo = p[2].trim(), t = parseFloat(p[3]);
         if (!isNaN(yr) && !isNaN(t) && MONTHS.includes(mo)) { ng[yr + "-" + mo] = t; gc++; continue; }
@@ -83,22 +112,14 @@ export function importCSV(): void {
       sk++;
       continue;
     }
-    // Parse win rows — handle quoted fields
-    let parts: string[];
-    if (line.includes('"')) {
-      const sep = delim === "," ? "," : delim;
-      const re = new RegExp("^(\\d+)" + escRe(sep) + "(\\w+)" + escRe(sep) + '"([^"]+)"' + escRe(sep) + "([^" + escRe(sep) + "]+)(?:" + escRe(sep) + "(.+))?$");
-      const m = line.match(re);
-      if (m) parts = [m[1], m[2], m[3], m[4], m[5] || ""];
-      else { sk++; continue; }
-    } else {
-      parts = line.split(delim);
-    }
+    const parts = parseCsvLine(line, delim);
     if (parts.length < 4) { sk++; continue; }
     const yr = parseInt(parts[0]), mo = parts[1].trim(), proj = parts[2].trim(), amt = parseFloat(parts[3]);
-    const src = parts.length >= 5 && parts[4].trim() ? parts[4].trim() : "Other";
+    const rawSrc = parts.length >= 5 && parts[4].trim() ? parts[4].trim() : OTHER_SOURCE;
+    const existingSrc = state.sources.find((source) => source.toLowerCase() === rawSrc.toLowerCase()) || ns.find((source) => source.toLowerCase() === rawSrc.toLowerCase());
+    const src = existingSrc || rawSrc;
     if (isNaN(yr) || isNaN(amt) || !proj || !MONTHS.includes(mo)) { sk++; continue; }
-    if (src && !state.sources.includes(src) && !ns.includes(src)) ns.push(src);
+    if (src && !existingSrc) ns.push(src);
     nw.push({ id: gid(), year: yr, month: mo, project: proj, amount: amt, source: src });
   }
   if (nw.length === 0 && gc === 0) {

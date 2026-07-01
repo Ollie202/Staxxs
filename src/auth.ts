@@ -2,7 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import { sb } from "./supabaseClient";
 import { state, showToast } from "./state";
 import { render } from "./render";
-import { cloudLoad, cloudSave } from "./cloud";
+import { clearCloudSave, cloudLoad, cloudSave } from "./cloud";
 import { KEY, DEFAULT_SOURCES } from "./constants";
 import type { PersistedData } from "./types";
 
@@ -33,10 +33,15 @@ function fallbackUsername(session: Session): string {
 export async function signInGoogle(): Promise<void> {
   if (!sb) { state.authError = "Cloud sync isn't configured yet."; render(); return; }
   state.authBusy = true; state.authError = ""; render();
-  await sb.auth.signInWithOAuth({
+  const { error } = await sb.auth.signInWithOAuth({
     provider: "google",
     options: { redirectTo: window.location.origin + window.location.pathname },
   });
+  if (error) {
+    state.authBusy = false;
+    state.authError = error.message;
+    render();
+  }
 }
 
 export async function signInEmail(): Promise<void> {
@@ -67,23 +72,8 @@ export async function signInEmail(): Promise<void> {
   if (error) { state.authError = error.message; render(); return; }
 }
 
-export async function signUpEmail(): Promise<void> {
-  if (!sb) { state.authError = "Cloud sync isn't configured yet."; render(); return; }
-  const { email, password } = state.authForm;
-  if (!email || !password) { state.authError = "Enter your email and password."; render(); return; }
-  if (password.length < 6) { state.authError = "Password must be at least 6 characters."; render(); return; }
-  state.authBusy = true; state.authError = ""; render();
-  const { data, error } = await sb.auth.signUp({ email: email.trim(), password });
-  state.authBusy = false;
-  if (error) { state.authError = error.message; render(); return; }
-  if (data.user && !data.session) {
-    state.showAuth = false; render();
-    showToast("Check your email to confirm your account");
-    return;
-  }
-}
-
 export async function signOut(): Promise<void> {
+  clearCloudSave();
   if (sb) await sb.auth.signOut();
   state.user = null;
   state.showAccount = false;

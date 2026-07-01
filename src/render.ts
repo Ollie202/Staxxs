@@ -210,10 +210,20 @@ export function render(): void {
   pills.appendChild(mkPill("All", !state.winMonth, () => { state.winMonth = null; render(); }, th));
   MONTHS.forEach((m) => { const c = wins.filter((w) => w.month === m).length; if (c > 0) pills.appendChild(mkPill(m + " (" + c + ")", state.winMonth === m, () => { state.winMonth = state.winMonth === m ? null : m; render(); }, th)); });
   wCol.appendChild(pills);
-  if (state.winMonth) wCol.appendChild(el("div", { style: { fontSize: "12px", color: th.sub, marginBottom: "8px" }, innerHTML: state.winMonth + " Total: <span style='font-weight:700;color:" + th.text + "'>" + fmt(displayTotal) + "</span>" }));
+  if (state.winMonth) {
+    const monthTotal = el("div", { style: { fontSize: "12px", color: th.sub, marginBottom: "8px" } });
+    monthTotal.append(state.winMonth + " Total: ", el("span", { style: { fontWeight: "700", color: th.text } }, fmt(displayTotal)));
+    wCol.appendChild(monthTotal);
+  }
 
   if (displayWins.length === 0) {
-    wCol.appendChild(el("div", { style: { textAlign: "center", padding: "36px 16px", color: th.muted, fontSize: "13px", background: th.card, border: "1px solid " + th.border, borderRadius: "12px" }, innerHTML: (state.winMonth ? "Nothing for " + state.winMonth + " yet" : "No bags for " + state.year + " yet") + "<br><span style='font-size:11px;margin-top:4px;display:inline-block'>Log your first win above</span>" }));
+    const empty = el("div", { style: { textAlign: "center", padding: "36px 16px", color: th.muted, fontSize: "13px", background: th.card, border: "1px solid " + th.border, borderRadius: "12px" } });
+    empty.append(
+      state.winMonth ? "Nothing for " + state.winMonth + " yet" : "No bags for " + state.year + " yet",
+      el("br"),
+      el("span", { style: { fontSize: "11px", marginTop: "4px", display: "inline-block" } }, "Log your first win above"),
+    );
+    wCol.appendChild(empty);
   } else {
     const wList = el("div", { style: { display: "flex", flexDirection: "column", gap: "6px" } });
     displayWins.forEach((win) => {
@@ -589,7 +599,40 @@ function renderConfirm(th: Theme): HTMLElement {
   return ov;
 }
 
-/** Build the sign-in / sign-up modal overlay. */
+function compressAvatar(file: File): Promise<string> {
+  const maxInputBytes = 5 * 1024 * 1024;
+  const maxSize = 512;
+  if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
+    return Promise.reject(new Error("Choose a PNG, JPG, or WebP image"));
+  }
+  if (file.size > maxInputBytes) {
+    return Promise.reject(new Error("Choose an image under 5 MB"));
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Couldn't read that image"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Couldn't load that image"));
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("Couldn't process that image")); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Build the profile setup / edit modal overlay. */
 function renderProfileSetupModal(th: Theme): HTMLElement {
   const ov = el("div", { style: { position: "fixed", inset: "0", background: "rgba(0,0,0,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "205", padding: "20px", animation: "fadeIn .2s ease" } });
   const card = el("div", { style: { background: th.card, border: "1px solid " + th.border, borderRadius: "16px", padding: "26px", width: "100%", maxWidth: "360px", boxShadow: "0 12px 40px rgba(0,0,0,.25)" } });
@@ -606,9 +649,9 @@ function renderProfileSetupModal(th: Theme): HTMLElement {
   fileInput.onchange = (e) => {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => { state.profileForm.avatar = String(ev.target?.result || ""); render(); };
-    reader.readAsDataURL(file);
+    compressAvatar(file)
+      .then((avatar) => { state.profileForm.avatar = avatar; render(); })
+      .catch((error: Error) => showToast(error.message));
   };
   fileLabel.appendChild(fileInput);
   avatarWrap.appendChild(fileLabel);

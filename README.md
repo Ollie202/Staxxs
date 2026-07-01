@@ -93,17 +93,59 @@ devices, connect a free [Supabase](https://supabase.com) project.
 ```sql
 create table if not exists public.user_data (
   user_id uuid primary key references auth.users(id) on delete cascade,
+  account_email text,
   data jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
+alter table public.user_data add column if not exists account_email text;
 alter table public.user_data enable row level security;
-create policy "own data select" on public.user_data for select using (auth.uid() = user_id);
-create policy "own data insert" on public.user_data for insert with check (auth.uid() = user_id);
-create policy "own data update" on public.user_data for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+update public.user_data
+set account_email = lower(auth.users.email)
+from auth.users
+where public.user_data.user_id = auth.users.id
+  and public.user_data.account_email is null;
+
+create unique index if not exists user_data_account_email_key
+on public.user_data (account_email);
+
+drop policy if exists "own data select" on public.user_data;
+drop policy if exists "own data insert" on public.user_data;
+drop policy if exists "own data update" on public.user_data;
+drop policy if exists "own data delete" on public.user_data;
+drop policy if exists "own email data select" on public.user_data;
+drop policy if exists "own email data insert" on public.user_data;
+drop policy if exists "own email data update" on public.user_data;
+drop policy if exists "own email data delete" on public.user_data;
+
+create policy "own email data select"
+on public.user_data for select
+using (account_email = lower(auth.jwt() ->> 'email'));
+
+create policy "own email data insert"
+on public.user_data for insert
+with check (
+  user_id = auth.uid()
+  and account_email = lower(auth.jwt() ->> 'email')
+);
+
+create policy "own email data update"
+on public.user_data for update
+using (account_email = lower(auth.jwt() ->> 'email'))
+with check (
+  user_id = auth.uid()
+  and account_email = lower(auth.jwt() ->> 'email')
+);
+
+create policy "own email data delete"
+on public.user_data for delete
+using (account_email = lower(auth.jwt() ->> 'email'));
 ```
 
-RLS guarantees each user can only read/write their own row — no one can see another
-user's data, even with the public anon key.
+RLS guarantees each user can only read/write the row for their verified email,
+even with the public anon key. Keeping `account_email` lets Google sign-in and
+email/password sign-in share the same Staxx data when they use the same email.
+Keep Supabase email confirmation on, and do not enable users without an email.
 
 **2. Add credentials as env vars** (from Supabase → Project Settings → API):
 
