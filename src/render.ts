@@ -2,7 +2,7 @@ import { state, save, showToast, gk, yw, doAddSource } from "./state";
 import { LIGHT, DARK, type Theme } from "./theme";
 import { MONTHS, CHART_TYPES } from "./constants";
 import { el, fmt, gid, $ } from "./dom";
-import { mkSelect, mkInput, mkPill } from "./ui";
+import { mkSelect, mkInput, mkPill, mkDropdown } from "./ui";
 import { renderChart } from "./chart";
 import { exportCSV, downloadCSV, importCSV } from "./csv";
 import { signInGoogle, signInEmail, signUpEmail, signOut } from "./auth";
@@ -218,9 +218,7 @@ export function render(): void {
   const chartCard = el("div", { style: { margin: "18px 20px 0", background: th.card, border: "1px solid " + th.border, borderRadius: "14px", padding: "18px 12px 14px" } });
   const chartHdr = el("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", padding: "0 6px" } });
   chartHdr.appendChild(el("span", { style: { fontSize: "13px", fontWeight: "600", color: th.text } }, "Monthly Earnings"));
-  const ctSel = el("select", { style: { padding: "5px 10px", borderRadius: "8px", border: "1px solid " + th.inputBorder, background: th.input, fontSize: "11px", color: th.sub, fontFamily: "'DM Sans',sans-serif", cursor: "pointer", outline: "none" } }) as HTMLSelectElement;
-  CHART_TYPES.forEach((c) => { const o = el("option", { value: c }, c + " Chart") as HTMLOptionElement; if (c === state.chartType) o.selected = true; ctSel.appendChild(o); });
-  ctSel.onchange = (e) => { state.chartType = (e.target as HTMLSelectElement).value; render(); };
+  const ctSel = mkDropdown(state.chartType, CHART_TYPES, (v) => { state.chartType = v; render(); }, th, { compact: true, labelFn: (o) => o + " Chart" });
   chartHdr.appendChild(ctSel);
   chartCard.appendChild(chartHdr);
 
