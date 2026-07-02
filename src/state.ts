@@ -31,7 +31,6 @@ export const state: State = {
   editingId: null,
   sourceView: "yearly",
   sourceMonth: MONTHS[new Date().getMonth()],
-  summaryScope: "monthly",
   summaryMonth: MONTHS[new Date().getMonth()],
   resetYear: String(new Date().getFullYear()),
   resetMonth: MONTHS[new Date().getMonth()],
