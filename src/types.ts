@@ -36,6 +36,7 @@ export interface UserProfile {
 
 export type CsvMode = "export" | "import";
 export type SourceView = "yearly" | "monthly";
+export type SummaryScope = "monthly" | "yearly";
 export type AuthMode = "signin" | "signup";
 export type Tab = "home" | "insights" | "profile";
 export type ResetType = "month" | "year" | null;
@@ -72,6 +73,7 @@ export interface State {
   editingId: string | null;
   sourceView: SourceView;
   sourceMonth: string;
+  summaryScope: SummaryScope;
   summaryMonth: string;
   resetYear: string;
   resetMonth: string;

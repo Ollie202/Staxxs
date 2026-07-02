@@ -375,21 +375,17 @@ export function render(): void {
   const th: Theme = state.dark ? DARK : LIGHT;
   const wins = yw();
   if (!MONTHS.includes(state.summaryMonth)) state.summaryMonth = state.activeMonth || MONTHS[new Date().getMonth()];
+  const summaryScope = state.summaryScope;
   const dm = state.summaryMonth;
-  const selectedWins = wins.filter((w) => w.month === dm);
+  const selectedWins = summaryScope === "yearly" ? wins : wins.filter((w) => w.month === dm);
   const selectedTotal = selectedWins.reduce((s, w) => s + w.amount, 0);
-  const cGoal = state.goals[gk(dm, state.year)];
+  const cGoal = summaryScope === "yearly" ? state.goals[ygk(state.year)] : state.goals[gk(dm, state.year)];
   const cEarned = selectedTotal;
   const gPctRaw = cGoal ? (cEarned / cGoal) * 100 : 0;
   const gPct = Math.min(gPctRaw, 100);
   const exceeded = cGoal && cEarned > cGoal;
-  const goalTitle = dm + " Goal";
-  const goalKey = gk(dm, state.year);
-  const yearlyEarned = wins.reduce((sum, win) => sum + win.amount, 0);
-  const yearlyGoal = state.goals[ygk(state.year)] || 0;
-  const yearlyPctRaw = yearlyGoal ? (yearlyEarned / yearlyGoal) * 100 : 0;
-  const yearlyPct = Math.min(yearlyPctRaw, 100);
-  const yearlyExceeded = yearlyGoal && yearlyEarned > yearlyGoal;
+  const goalTitle = summaryScope === "yearly" ? state.year + " Yearly Goal" : dm + " Goal";
+  const goalKey = summaryScope === "yearly" ? ygk(state.year) : gk(dm, state.year);
   let bestM = { m: "—", t: 0 };
   MONTHS.forEach((m) => { const v = wins.filter((w) => w.month === m).reduce((s, w) => s + w.amount, 0); if (v > bestM.t) bestM = { m, t: v }; });
   const bestMonth = bestM.t > 0 ? bestM.m + " (" + fmt(bestM.t) + ")" : "—";
@@ -470,14 +466,21 @@ export function render(): void {
   } else gcL.appendChild(el("div", { style: { fontSize: "12px", color: th.muted, marginTop: "2px" } }, "No goal set"));
 
   const gcR = el("div", { style: { display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" } });
-  gcR.appendChild(mkDropdown(dm, MONTHS, (v) => {
-    state.summaryMonth = v;
-    state.activeMonth = v;
+  gcR.appendChild(mkDropdown(summaryScope === "yearly" ? "Year" : "Month", ["Month", "Year"], (v) => {
+    state.summaryScope = v === "Year" ? "yearly" : "monthly";
     state.showGoalForm = false;
     render();
-  }, th, { compact: true, labelFn: (month) => MONTH_ABBREVIATIONS[MONTHS.indexOf(month)] || month }));
+  }, th, { compact: true }));
+  if (summaryScope === "monthly") {
+    gcR.appendChild(mkDropdown(dm, MONTHS, (v) => {
+      state.summaryMonth = v;
+      state.activeMonth = v;
+      state.showGoalForm = false;
+      render();
+    }, th, { compact: true, labelFn: (month) => MONTH_ABBREVIATIONS[MONTHS.indexOf(month)] || month }));
+  }
   if (cGoal) gcR.appendChild(el("button", { style: { padding: "5px 10px", borderRadius: "8px", border: "1px solid " + th.border, background: "transparent", cursor: "pointer", fontSize: "11px", color: th.accent, fontFamily: "'DM Sans',sans-serif" }, onClick: () => { state.confirm = { title: "Remove this goal?", detail: goalTitle + " — " + fmt(cGoal), message: "Your logged winnings stay; only the goal is removed.", confirmLabel: "Remove", onConfirm: () => { const g = { ...state.goals }; delete g[goalKey]; state.goals = g; save(); render(); } }; render(); } }, "Remove"));
-  gcR.appendChild(el("button", { style: { padding: "5px 12px", borderRadius: "8px", border: "1px solid " + th.inputBorder, background: th.input, cursor: "pointer", fontSize: "11px", color: th.sub, fontFamily: "'DM Sans',sans-serif", fontWeight: "500" }, onClick: () => { state.goalForm = { month: dm, target: cGoal ? String(cGoal) : "" }; state.editingGoalKey = cGoal ? goalKey : null; state.showGoalForm = !state.showGoalForm; render(); } }, cGoal ? "Edit" : "Set Goal"));
+  gcR.appendChild(el("button", { style: { padding: "5px 12px", borderRadius: "8px", border: "1px solid " + th.inputBorder, background: th.input, cursor: "pointer", fontSize: "11px", color: th.sub, fontFamily: "'DM Sans',sans-serif", fontWeight: "500" }, onClick: () => { state.goalForm = { month: summaryScope === "yearly" ? YEARLY_GOAL_LABEL : dm, target: cGoal ? String(cGoal) : "" }; state.editingGoalKey = cGoal ? goalKey : null; state.showGoalForm = !state.showGoalForm; render(); } }, cGoal ? "Edit" : "Set Goal"));
   gcTop.append(gcL, gcR);
   gc.appendChild(gcTop);
 
@@ -497,7 +500,7 @@ export function render(): void {
     const p = g ? Math.min((e / g) * 100, 100) : 0;
     const hit = g && e >= g;
     const isA = m === dm;
-    const d = el("div", { style: { flex: "1 1 68px", minWidth: "58px", cursor: "pointer", textAlign: "center" }, onClick: () => { state.summaryMonth = m; state.activeMonth = m; render(); } });
+    const d = el("div", { style: { flex: "1 1 68px", minWidth: "58px", cursor: "pointer", textAlign: "center" }, onClick: () => { state.summaryScope = "monthly"; state.summaryMonth = m; state.activeMonth = m; render(); } });
     d.appendChild(el("div", { style: { fontSize: "8px", color: isA ? th.text : th.muted, fontWeight: isA ? "600" : "400", marginBottom: "2px" } }, MONTH_ABBREVIATIONS[index] || m));
     const b = el("div", { style: { height: "5px", background: th.barBg, borderRadius: "3px", overflow: "hidden" } });
     b.appendChild(el("div", { style: { width: g ? p + "%" : "0%", height: "100%", background: hit ? th.green : th.accent, borderRadius: "3px", transition: "width .5s ease" } }));
@@ -505,33 +508,6 @@ export function render(): void {
     miniRow.appendChild(d);
   });
   gc.appendChild(miniRow);
-
-  // Yearly goal
-  const yearlyKey = ygk(state.year);
-  const yearlyBlock = el("div", { style: { marginTop: "16px", paddingTop: "14px", borderTop: "1px solid " + th.border } });
-  const yearlyTop = el("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", flexWrap: "wrap", marginBottom: "10px" } });
-  const yearlyLeft = el("div", {});
-  yearlyLeft.appendChild(el("div", { style: { fontSize: "13px", fontWeight: "700", color: th.text } }, state.year + " Yearly Goal"));
-  if (yearlyGoal) {
-    const sub = el("div", { style: { fontSize: "12px", color: th.sub, marginTop: "2px" } });
-    sub.textContent = fmt(yearlyEarned) + " of " + fmt(yearlyGoal);
-    if (yearlyExceeded) sub.appendChild(el("span", { style: { color: th.green, fontWeight: "700" } }, " — Exceeded!"));
-    yearlyLeft.appendChild(sub);
-  } else {
-    yearlyLeft.appendChild(el("div", { style: { fontSize: "12px", color: th.muted, marginTop: "2px" } }, "No yearly goal set"));
-  }
-  const yearlyActions = el("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" } });
-  if (yearlyGoal) yearlyActions.appendChild(el("button", { style: { padding: "5px 10px", borderRadius: "8px", border: "1px solid " + th.border, background: "transparent", cursor: "pointer", fontSize: "11px", color: th.accent, fontFamily: "'DM Sans',sans-serif" }, onClick: () => { state.confirm = { title: "Remove this yearly goal?", detail: state.year + " yearly goal — " + fmt(yearlyGoal), message: "Your logged winnings stay; only the yearly goal is removed.", confirmLabel: "Remove", onConfirm: () => { const g = { ...state.goals }; delete g[yearlyKey]; state.goals = g; save(); render(); } }; render(); } }, "Remove"));
-  yearlyActions.appendChild(el("button", { style: { padding: "5px 12px", borderRadius: "8px", border: "1px solid " + th.inputBorder, background: th.input, cursor: "pointer", fontSize: "11px", color: th.sub, fontFamily: "'DM Sans',sans-serif", fontWeight: "500" }, onClick: () => { state.goalForm = { month: YEARLY_GOAL_LABEL, target: yearlyGoal ? String(yearlyGoal) : "" }; state.editingGoalKey = yearlyGoal ? yearlyKey : null; state.showGoalForm = !state.showGoalForm; render(); } }, yearlyGoal ? "Edit" : "Set Goal"));
-  yearlyTop.append(yearlyLeft, yearlyActions);
-  yearlyBlock.appendChild(yearlyTop);
-  const yearlyBar = el("div", { style: { width: "100%", height: "18px", background: th.barBg, borderRadius: "999px", overflow: "hidden", position: "relative" } });
-  const yearlyFill = el("div", { style: { width: yearlyGoal ? yearlyPct + "%" : "0%", height: "100%", background: yearlyExceeded ? th.greenGrad : th.accentGrad, borderRadius: "999px", transition: "width .8s cubic-bezier(.4,0,.2,1)", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: yearlyPct > 18 ? "8px" : "0" } });
-  if (yearlyGoal && yearlyPct > 18) yearlyFill.appendChild(el("span", { style: { fontSize: "10px", fontWeight: "800", color: "#FFFCF7", textShadow: "0 1px 2px rgba(0,0,0,.2)" } }, Math.round(yearlyPctRaw) + "%"));
-  yearlyBar.appendChild(yearlyFill);
-  if (yearlyGoal && yearlyPct <= 18) yearlyBar.appendChild(el("span", { style: { position: "absolute", left: "9px", top: "50%", transform: "translateY(-50%)", fontSize: "10px", fontWeight: "700", color: th.sub } }, Math.round(yearlyPctRaw) + "%"));
-  yearlyBlock.appendChild(yearlyBar);
-  gc.appendChild(yearlyBlock);
 
   // Goal form
   if (state.showGoalForm) {
