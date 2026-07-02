@@ -285,7 +285,7 @@ function drawMonthShareCard(th: Theme): void {
 
   ctx.fillStyle = th.text;
   ctx.font = "700 34px 'DM Sans', Arial, sans-serif";
-  ctx.fillText(report.wins.length + " deal" + (report.wins.length === 1 ? "" : "s"), 108, 438);
+  ctx.fillText(report.wins.length + " win" + (report.wins.length === 1 ? "" : "s"), 108, 438);
   ctx.fillStyle = th.sub;
   ctx.font = "500 30px 'DM Sans', Arial, sans-serif";
   const sourceTextEnd = canvasText(ctx, "Top source: " + report.topSource, 108, 488, 820, 38, 2);
@@ -388,7 +388,9 @@ export function render(): void {
   const goalKey = summaryScope === "yearly" ? ygk(state.year) : gk(dm, state.year);
   const monthsWithEarnings = new Set(wins.map((w) => w.month)).size;
   const monthlyAverage = monthsWithEarnings ? fmt(wins.reduce((s, w) => s + w.amount, 0) / monthsWithEarnings) : "—";
-  const totalEarnedLabel = summaryScope === "yearly" ? "Total Earned (" + state.year + ")" : "Total Earned (" + (MONTH_ABBREVIATIONS[MONTHS.indexOf(dm)] || dm) + ")";
+  const summaryPeriodLabel = summaryScope === "yearly" ? String(state.year) : (MONTH_ABBREVIATIONS[MONTHS.indexOf(dm)] || dm);
+  const totalEarnedLabel = "Total Earned (" + summaryPeriodLabel + ")";
+  const totalWinsLabel = "Total Wins (" + summaryPeriodLabel + ")";
   const srcMap: Record<string, number> = {};
   selectedWins.forEach((w) => { srcMap[w.source] = (srcMap[w.source] || 0) + w.amount; });
   let topSrc = { n: "—", t: 0 };
@@ -536,7 +538,7 @@ export function render(): void {
   // Stats
   const stats: { label: string; value: string | number; ac: string }[] = [
     { label: totalEarnedLabel, value: fmt(selectedTotal), ac: th.accent },
-    { label: "Total Deals", value: selectedWins.length, ac: th.sub },
+    { label: totalWinsLabel, value: selectedWins.length, ac: th.sub },
     { label: "Monthly Average", value: monthlyAverage, ac: state.dark ? "#C0724D" : "#A0522D" },
     { label: "Top Source", value: topSource, ac: state.dark ? "#DEB88A" : "#D4A574" },
   ];
@@ -858,7 +860,7 @@ function renderChartBreakdownModal(th: Theme): HTMLElement {
   const title = el("div", {});
   title.appendChild(el("div", { style: { fontSize: "11px", color: th.sub, fontWeight: "800", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "4px" } }, "Monthly breakdown"));
   title.appendChild(el("h2", { style: { fontFamily: "'Playfair Display',serif", fontSize: "30px", lineHeight: "1.1", color: th.text, margin: "0" } }, month + " " + state.year));
-  title.appendChild(el("p", { style: { fontSize: "12px", color: th.sub, margin: "7px 0 0", lineHeight: "1.45" } }, report.wins.length + " deal" + (report.wins.length === 1 ? "" : "s") + " logged for this month."));
+  title.appendChild(el("p", { style: { fontSize: "12px", color: th.sub, margin: "7px 0 0", lineHeight: "1.45" } }, report.wins.length + " win" + (report.wins.length === 1 ? "" : "s") + " logged for this month."));
   top.appendChild(title);
   top.appendChild(el("button", { type: "button", title: "Close", style: { width: "34px", height: "34px", borderRadius: "50%", border: "1px solid " + th.border, background: "transparent", color: th.sub, cursor: "pointer", fontSize: "20px", lineHeight: "1", flexShrink: "0" }, onClick: () => close() }, "×"));
   card.appendChild(top);
@@ -866,7 +868,7 @@ function renderChartBreakdownModal(th: Theme): HTMLElement {
   const summary = el("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "10px", marginBottom: "16px" } });
   [
     ["Total earned", fmt(report.total)],
-    ["Total deals", String(report.wins.length)],
+    ["Total wins", String(report.wins.length)],
     ["Top source", report.topSource],
     ["Biggest win", report.biggestWin ? fmt(report.biggestWin.amount) : "—"],
   ].forEach(([label, value]) => {
@@ -913,10 +915,10 @@ function renderChartBreakdownModal(th: Theme): HTMLElement {
   card.appendChild(sources);
 
   const winsList = el("div", {});
-  winsList.appendChild(el("h3", { style: { fontSize: "13px", color: th.text, margin: "0 0 10px", fontWeight: "800" } }, "Deals"));
+  winsList.appendChild(el("h3", { style: { fontSize: "13px", color: th.text, margin: "0 0 10px", fontWeight: "800" } }, "Wins"));
   const sortedWins = [...report.wins].sort((a, b) => b.amount - a.amount || a.project.localeCompare(b.project));
   if (sortedWins.length === 0) {
-    winsList.appendChild(el("div", { style: { padding: "18px", borderRadius: "14px", border: "1px solid " + th.border, background: th.input, color: th.muted, fontSize: "12px", textAlign: "center" } }, "No deals logged for " + month + " yet."));
+    winsList.appendChild(el("div", { style: { padding: "18px", borderRadius: "14px", border: "1px solid " + th.border, background: th.input, color: th.muted, fontSize: "12px", textAlign: "center" } }, "No wins logged for " + month + " yet."));
   } else {
     sortedWins.forEach((win) => {
       const row = el("div", { style: { display: "grid", gridTemplateColumns: "1fr auto", gap: "12px", alignItems: "center", padding: "12px 0", borderBottom: "1px solid " + th.border } });
@@ -994,7 +996,7 @@ function renderInsights(th: Theme): HTMLElement {
 
   const cards: { label: string; value: string; ac: string }[] = [
     { label: "Lifetime Earned", value: fmt(total), ac: th.accent },
-    { label: "Total Deals", value: String(all.length), ac: th.sub },
+    { label: "Total Wins", value: String(all.length), ac: th.sub },
     { label: "Best Year", value: bestYear.y ? bestYear.y + " (" + fmt(bestYear.v) + ")" : "—", ac: th.green },
     { label: "Best Month", value: bestMonth.v > 0 ? bestMonth.k + " (" + fmt(bestMonth.v) + ")" : "—", ac: state.dark ? "#DEB88A" : "#D4A574" },
     { label: "Top Source", value: srcSorted[0] ? srcSorted[0][0] : "—", ac: state.dark ? "#C0724D" : "#A0522D" },
