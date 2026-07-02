@@ -391,11 +391,11 @@ export function render(): void {
   const summaryPeriodLabel = summaryScope === "yearly" ? String(state.year) : (MONTH_ABBREVIATIONS[MONTHS.indexOf(dm)] || dm);
   const totalEarnedLabel = "Total Earned (" + summaryPeriodLabel + ")";
   const totalWinsLabel = "Total Wins (" + summaryPeriodLabel + ")";
+  const topSourceLabel = "Top Source (" + summaryPeriodLabel + ")";
   const srcMap: Record<string, number> = {};
   selectedWins.forEach((w) => { srcMap[w.source] = (srcMap[w.source] || 0) + w.amount; });
-  let topSrc = { n: "—", t: 0 };
-  Object.entries(srcMap).forEach(([n, v]) => { if (v > topSrc.t) topSrc = { n, t: v }; });
-  const topSource = topSrc.t > 0 ? topSrc.n : "—";
+  const selectedSources = Object.entries(srcMap).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const topSource = selectedSources[0]?.[1] > 0 ? selectedSources[0][0] : "—";
 
   const displayWins = (state.winMonth ? wins.filter((w) => w.month === state.winMonth) : wins).sort((a, b) => monthIndex(a.month) - monthIndex(b.month));
   const displayTotal = displayWins.reduce((s, w) => s + w.amount, 0);
@@ -540,7 +540,7 @@ export function render(): void {
     { label: totalEarnedLabel, value: fmt(selectedTotal), ac: th.accent },
     { label: totalWinsLabel, value: selectedWins.length, ac: th.sub },
     { label: "Monthly Average", value: monthlyAverage, ac: state.dark ? "#C0724D" : "#A0522D" },
-    { label: "Top Source", value: topSource, ac: state.dark ? "#DEB88A" : "#D4A574" },
+    { label: topSourceLabel, value: topSource, ac: state.dark ? "#DEB88A" : "#D4A574" },
   ];
   const sg = el("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: "10px", padding: "18px 20px 0" } });
   stats.forEach((s) => {
