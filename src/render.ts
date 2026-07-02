@@ -392,6 +392,7 @@ export function render(): void {
   const totalEarnedLabel = "Total Earned (" + summaryPeriodLabel + ")";
   const totalWinsLabel = "Total Wins (" + summaryPeriodLabel + ")";
   const topSourceLabel = "Top Source (" + summaryPeriodLabel + ")";
+  const monthlyAverageLabel = "Monthly Average (" + state.year + ")";
   const srcMap: Record<string, number> = {};
   selectedWins.forEach((w) => { srcMap[w.source] = (srcMap[w.source] || 0) + w.amount; });
   const selectedSources = Object.entries(srcMap).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
@@ -539,7 +540,7 @@ export function render(): void {
   const stats: { label: string; value: string | number; ac: string }[] = [
     { label: totalEarnedLabel, value: fmt(selectedTotal), ac: th.accent },
     { label: totalWinsLabel, value: selectedWins.length, ac: th.sub },
-    { label: "Monthly Average", value: monthlyAverage, ac: state.dark ? "#C0724D" : "#A0522D" },
+    { label: monthlyAverageLabel, value: monthlyAverage, ac: state.dark ? "#C0724D" : "#A0522D" },
     { label: topSourceLabel, value: topSource, ac: state.dark ? "#DEB88A" : "#D4A574" },
   ];
   const sg = el("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: "10px", padding: "18px 20px 0" } });
@@ -567,7 +568,7 @@ export function render(): void {
 
   // Add button
   const addWrap = el("div", { style: { padding: "18px 20px 0" } });
-  addWrap.appendChild(el("button", { style: { width: "100%", padding: "12px", borderRadius: "10px", border: "2px dashed " + th.border, background: "transparent", cursor: "pointer", fontSize: "13px", color: th.sub, fontFamily: "'DM Sans',sans-serif", fontWeight: "600" }, onClick: () => { state.showAddForm = !state.showAddForm; state.addForm = { month: MONTHS[new Date().getMonth()], project: "", amount: "", source: "Bounties" }; render(); } }, "+ Log a New Bag"));
+  addWrap.appendChild(el("button", { style: { width: "100%", padding: "12px", borderRadius: "10px", border: "2px dashed " + th.border, background: "transparent", cursor: "pointer", fontSize: "13px", color: th.sub, fontFamily: "'DM Sans',sans-serif", fontWeight: "600" }, onClick: () => { state.showAddForm = !state.showAddForm; state.addForm = { month: MONTHS[new Date().getMonth()], project: "", amount: "", source: state.sources[0] || OTHER_SOURCE }; render(); } }, "+ Log a New Bag"));
   app.appendChild(addWrap);
 
   // Add form

@@ -38,8 +38,8 @@ export const state: State = {
   confirm: null,
   toast: null,
   editingGoalKey: null,
-  addForm: { month: MONTHS[new Date().getMonth()], project: "", amount: "", source: "Bounties" },
-  editForm: { month: MONTHS[0], project: "", amount: "", source: "Bounties" },
+  addForm: { month: MONTHS[new Date().getMonth()], project: "", amount: "", source: DEFAULT_SOURCES[0] || OTHER_SOURCE },
+  editForm: { month: MONTHS[0], project: "", amount: "", source: DEFAULT_SOURCES[0] || OTHER_SOURCE },
   goalForm: { month: MONTHS[0], target: "" },
   newSource: "",
   user: null,
@@ -61,6 +61,17 @@ function normalizeWins(wins: Win[]): Win[] {
   return wins.map((win) => ({ ...win, month: normalizeMonth(win.month) || win.month }));
 }
 
+export function normalizeSources(sources: string[] = []): string[] {
+  const rawSources = sources.map((source) => String(source || "").trim()).filter(Boolean);
+  if (rawSources.length === 0) return [...DEFAULT_SOURCES];
+  const out: string[] = [];
+  [...rawSources, OTHER_SOURCE].forEach((trimmed) => {
+    if (out.some((item) => item.toLowerCase() === trimmed.toLowerCase())) return;
+    out.push(trimmed.toLowerCase() === OTHER_SOURCE.toLowerCase() ? OTHER_SOURCE : trimmed);
+  });
+  return out;
+}
+
 function normalizeGoals(goals: Goals): Goals {
   const out: Goals = {};
   Object.entries(goals).forEach(([key, target]) => {
@@ -77,10 +88,11 @@ function normalizeGoals(goals: Goals): Goals {
 }
 
 export function normalizePersistedData(data: PersistedData): PersistedData {
+  const wins = normalizeWins(data.wins || []);
   return {
-    wins: normalizeWins(data.wins || []),
+    wins,
     goals: normalizeGoals(data.goals || {}),
-    sources: data.sources || [],
+    sources: normalizeSources([...(data.sources || []), ...wins.map((win) => win.source)]),
     profile: data.profile,
   };
 }
@@ -93,7 +105,7 @@ export function load(): void {
       const normalized = normalizePersistedData(d);
       if (normalized.wins.length) state.wins = normalized.wins;
       if (normalized.goals) state.goals = normalized.goals;
-      if (normalized.sources.length) state.sources = normalized.sources.includes(OTHER_SOURCE) ? normalized.sources : [...normalized.sources, OTHER_SOURCE];
+      if (normalized.sources.length) state.sources = normalized.sources;
       if (normalized.profile) state.profile = { username: normalized.profile.username || "", avatar: normalized.profile.avatar || "" };
     }
   } catch {

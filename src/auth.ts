@@ -1,6 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import { sb } from "./supabaseClient";
-import { state, showToast, normalizePersistedData } from "./state";
+import { state, showToast, normalizePersistedData, normalizeSources } from "./state";
 import { render } from "./render";
 import { clearCloudSave, cloudLoad, cloudSave } from "./cloud";
 import { KEY, DEFAULT_SOURCES } from "./constants";
@@ -16,7 +16,7 @@ function applyData(data: PersistedData): void {
   const normalized = normalizePersistedData(data);
   state.wins = normalized.wins;
   state.goals = normalized.goals;
-  state.sources = normalized.sources && normalized.sources.length ? normalized.sources : [...DEFAULT_SOURCES];
+  state.sources = normalized.sources && normalized.sources.length ? normalized.sources : normalizeSources(DEFAULT_SOURCES);
   state.profile = { username: normalized.profile?.username || "", avatar: normalized.profile?.avatar || "" };
   state.profileForm = { ...state.profile };
   try {
