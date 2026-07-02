@@ -479,7 +479,6 @@ export function render(): void {
       render();
     }, th, { compact: true, labelFn: (month) => MONTH_ABBREVIATIONS[MONTHS.indexOf(month)] || month }));
   }
-  if (cGoal) gcR.appendChild(el("button", { style: { padding: "5px 10px", borderRadius: "8px", border: "1px solid " + th.border, background: "transparent", cursor: "pointer", fontSize: "11px", color: th.accent, fontFamily: "'DM Sans',sans-serif" }, onClick: () => { state.confirm = { title: "Remove this goal?", detail: goalTitle + " — " + fmt(cGoal), message: "Your logged winnings stay; only the goal is removed.", confirmLabel: "Remove", onConfirm: () => { const g = { ...state.goals }; delete g[goalKey]; state.goals = g; save(); render(); } }; render(); } }, "Remove"));
   gcR.appendChild(el("button", { style: { padding: "5px 12px", borderRadius: "8px", border: "1px solid " + th.inputBorder, background: th.input, cursor: "pointer", fontSize: "11px", color: th.sub, fontFamily: "'DM Sans',sans-serif", fontWeight: "500" }, onClick: () => { state.goalForm = { month: summaryScope === "yearly" ? YEARLY_GOAL_LABEL : dm, target: cGoal ? String(cGoal) : "" }; state.editingGoalKey = cGoal ? goalKey : null; state.showGoalForm = !state.showGoalForm; render(); } }, cGoal ? "Edit" : "Set Goal"));
   gcTop.append(gcL, gcR);
   gc.appendChild(gcTop);
@@ -523,8 +522,11 @@ export function render(): void {
     const tInp = mkInput(state.goalForm.target, "500", (v) => { state.goalForm.target = v; }, "Target ($)", "number", th);
     row.append(mSel, tInp);
     gf.appendChild(row);
-    const btns = el("div", { style: { display: "flex", gap: "8px" } });
+    const btns = el("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } });
     btns.appendChild(el("button", { style: { flex: "1", padding: "10px", borderRadius: "8px", border: "none", background: th.accent, color: "#FFFCF7", fontSize: "12px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }, onClick: () => { const v = parseFloat(state.goalForm.target); if (isNaN(v) || v <= 0) return; const key = state.editingGoalKey || (state.goalForm.month === YEARLY_GOAL_LABEL ? ygk(state.year) : gk(state.goalForm.month, state.year)); state.goals[key] = v; state.showGoalForm = false; state.editingGoalKey = null; save(); render(); } }, state.editingGoalKey ? "Update" : "Set Goal"));
+    if (state.editingGoalKey) {
+      btns.appendChild(el("button", { style: { flex: "1", minWidth: "100px", padding: "10px 14px", borderRadius: "8px", border: "1px solid " + th.danger, background: "transparent", color: th.danger, fontSize: "12px", fontWeight: "700", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }, onClick: () => { state.confirm = { title: "Remove this goal?", detail: goalTitle + " — " + fmt(cGoal || 0), message: "Your logged winnings stay; only the goal is removed.", confirmLabel: "Remove", onConfirm: () => { const g = { ...state.goals }; delete g[goalKey]; state.goals = g; state.showGoalForm = false; state.editingGoalKey = null; save(); render(); } }; render(); } }, "Remove"));
+    }
     btns.appendChild(el("button", { style: { padding: "10px 14px", borderRadius: "8px", border: "1px solid " + th.border, background: "transparent", color: th.sub, fontSize: "12px", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }, onClick: () => { state.showGoalForm = false; render(); } }, "Cancel"));
     gf.appendChild(btns);
     gc.appendChild(gf);
