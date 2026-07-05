@@ -577,7 +577,7 @@ export function render(): void {
 
   // Add button
   const addWrap = el("div", { style: { padding: "18px 20px 0" } });
-  addWrap.appendChild(el("button", { style: { width: "100%", padding: "12px", borderRadius: "10px", border: "2px dashed " + th.border, background: "transparent", cursor: "pointer", fontSize: "13px", color: th.sub, fontFamily: "'DM Sans',sans-serif", fontWeight: "600" }, onClick: () => { state.showAddForm = !state.showAddForm; state.addForm = { month: MONTHS[new Date().getMonth()], project: "", amount: "", source: state.sources[0] || OTHER_SOURCE }; render(); } }, "+ Log a New Bag"));
+  addWrap.appendChild(el("button", { style: { width: "100%", padding: "13px", borderRadius: "10px", border: "1px solid " + th.accent, background: th.accent, cursor: "pointer", fontSize: "13px", color: "#FFFCF7", fontFamily: "'DM Sans',sans-serif", fontWeight: "800", boxShadow: "0 10px 24px rgba(198, 147, 99, .24)" }, onClick: () => { state.showAddForm = !state.showAddForm; state.addForm = { month: MONTHS[new Date().getMonth()], project: "", amount: "", source: state.sources[0] || OTHER_SOURCE }; render(); } }, "+ Log a New Bag"));
   app.appendChild(addWrap);
 
   // Add form
