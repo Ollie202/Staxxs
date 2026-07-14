@@ -56,33 +56,6 @@ export async function signInGoogle(): Promise<void> {
   }
 }
 
-export async function signInEmail(): Promise<void> {
-  if (!sb) { state.authError = "Cloud sync isn't configured yet."; render(); return; }
-  const { email, password } = state.authForm;
-  if (!email || !password) { state.authError = "Enter your email and password."; render(); return; }
-  state.authBusy = true; state.authError = ""; render();
-  const cleanEmail = email.trim();
-  const { error } = await sb.auth.signInWithPassword({ email: cleanEmail, password });
-  state.authBusy = false;
-  if (error) { state.authError = error.message; render(); return; }
-}
-
-export async function signUpEmail(): Promise<void> {
-  if (!sb) { state.authError = "Cloud sync isn't configured yet."; render(); return; }
-  const { email, password } = state.authForm;
-  if (!email || !password) { state.authError = "Enter your email and password."; render(); return; }
-  if (password.length < 6) { state.authError = "Password must be at least 6 characters."; render(); return; }
-  state.authBusy = true; state.authError = ""; render();
-  const { data, error } = await sb.auth.signUp({ email: email.trim(), password });
-  state.authBusy = false;
-  if (error) { state.authError = error.message; render(); return; }
-  if (data.user && !data.session) {
-    state.showAuth = false; render();
-    showToast("Check your email to confirm your account");
-    return;
-  }
-}
-
 export async function signOut(): Promise<void> {
   clearCloudSave();
   if (sb) await sb.auth.signOut();

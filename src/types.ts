@@ -24,11 +24,6 @@ export interface GoalForm {
   target: string;
 }
 
-export interface AuthForm {
-  email: string;
-  password: string;
-}
-
 export interface UserProfile {
   username: string;
   avatar: string;
@@ -37,7 +32,6 @@ export interface UserProfile {
 export type CsvMode = "export" | "import";
 export type SourceView = "yearly" | "monthly";
 export type SummaryScope = "monthly" | "yearly";
-export type AuthMode = "signin" | "signup";
 export type Tab = "home" | "insights" | "profile";
 export type ResetType = "month" | "year" | null;
 
@@ -90,10 +84,8 @@ export interface State {
   user: User | null;
   showAuth: boolean;
   showAccount: boolean;
-  authMode: AuthMode;
   authBusy: boolean;
   authError: string;
-  authForm: AuthForm;
   profile: UserProfile;
   showProfileSetup: boolean;
   editingProfile: boolean;

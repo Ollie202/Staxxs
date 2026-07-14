@@ -6,7 +6,7 @@ import { el, fmt, gid, $ } from "./dom";
 import { mkSelect, mkInput, mkPill, mkDropdown } from "./ui";
 import { renderChart } from "./chart";
 import { exportCSV, downloadCSV, importCSV } from "./csv";
-import { signInGoogle, signInEmail, signUpEmail, signOut } from "./auth";
+import { signInGoogle, signOut } from "./auth";
 import { cloudEnabled } from "./supabaseClient";
 import { saveFile } from "./download";
 
@@ -1082,7 +1082,7 @@ function renderProfile(th: Theme): HTMLElement {
     acct.appendChild(el("button", { style: { width: "100%", padding: "11px", borderRadius: "10px", border: "1px solid " + th.border, background: "transparent", color: th.accent, fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }, onClick: () => signOut() }, "Sign out"));
   } else {
     acct.appendChild(el("p", { style: { fontSize: "12px", color: th.sub, margin: "0 0 12px", lineHeight: "1.5" } }, cloudEnabled() ? "Sign in to sync your winnings across all your devices." : "Cloud sync isn't set up yet — Staxxs still works and saves everything locally."));
-    acct.appendChild(primaryBtn("Sign in", () => { state.showAuth = true; state.authMode = "signin"; state.authError = ""; render(); }));
+    acct.appendChild(primaryBtn("Sign in", () => { state.showAuth = true; state.authError = ""; render(); }));
   }
   wrap.appendChild(acct);
 
@@ -1268,27 +1268,15 @@ function renderAuthModal(th: Theme): HTMLElement {
   const ov = el("div", { style: { position: "fixed", inset: "0", background: "rgba(0,0,0,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "200", padding: "20px", animation: "fadeIn .2s ease" } });
   ov.addEventListener("click", (e) => { if (e.target === ov) { state.showAuth = false; render(); } });
   const card = el("div", { style: { background: th.card, border: "1px solid " + th.border, borderRadius: "16px", padding: "26px", width: "100%", maxWidth: "360px", boxShadow: "0 12px 40px rgba(0,0,0,.25)", maxHeight: "90vh", overflowY: "auto" } });
-  const signup = state.authMode === "signup";
-  card.appendChild(el("h2", { style: { fontFamily: "'Playfair Display',serif", fontSize: "22px", margin: "0 0 4px", color: th.text } }, signup ? "Create account" : "Welcome back"));
-  card.appendChild(el("p", { style: { fontSize: "12px", color: th.sub, margin: "0 0 18px" } }, "Sync your bags across devices"));
+  card.appendChild(el("h2", { style: { fontFamily: "'Playfair Display',serif", fontSize: "22px", margin: "0 0 4px", color: th.text } }, "Continue to Staxxs"));
+  card.appendChild(el("p", { style: { fontSize: "12px", color: th.sub, margin: "0 0 18px", lineHeight: "1.5" } }, "Use Google to sign in or create your account. Your bags sync across devices automatically."));
   if (!cloudEnabled()) {
     card.appendChild(el("div", { style: { fontSize: "11px", color: th.danger, background: th.danger + "18", border: "1px solid " + th.danger, borderRadius: "8px", padding: "10px", marginBottom: "14px", lineHeight: "1.5" } }, "Cloud sync isn't set up yet. Add your Supabase env vars (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) — see the README."));
   }
-  // Google
-  const g = el("button", { disabled: state.authBusy, style: { width: "100%", padding: "11px", borderRadius: "10px", border: "1px solid " + th.inputBorder, background: th.input, color: th.text, fontSize: "13px", fontWeight: "600", cursor: state.authBusy ? "default" : "pointer", fontFamily: "'DM Sans',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: "9px", marginBottom: "16px", opacity: state.authBusy ? "0.65" : "1" }, onClick: () => { if (!state.authBusy) signInGoogle(); } });
+  const g = el("button", { disabled: state.authBusy, style: { width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid " + th.inputBorder, background: th.input, color: th.text, fontSize: "13px", fontWeight: "700", cursor: state.authBusy ? "default" : "pointer", fontFamily: "'DM Sans',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: "9px", marginBottom: state.authError ? "10px" : "14px", opacity: state.authBusy ? "0.65" : "1" }, onClick: () => { if (!state.authBusy) signInGoogle(); } });
   g.innerHTML = '<svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571.001-.001.002-.001.003-.002l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg> Continue with Google';
   card.appendChild(g);
-  // divider
-  const dv = el("div", { style: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" } });
-  dv.append(el("div", { style: { flex: "1", height: "1px", background: th.border } }), el("span", { style: { fontSize: "10px", color: th.muted, textTransform: "uppercase", letterSpacing: "0.5px" } }, "or"), el("div", { style: { flex: "1", height: "1px", background: th.border } }));
-  card.appendChild(dv);
-  // email + password
-  card.appendChild(mkInput(state.authForm.email, "you@email.com", (v) => { state.authForm.email = v; }, "Email", "email", th));
-  card.appendChild(el("div", { style: { height: "10px" } }));
-  card.appendChild(mkInput(state.authForm.password, "••••••", (v) => { state.authForm.password = v; }, "Password", "password", th));
-  if (state.authError) card.appendChild(el("div", { style: { fontSize: "11px", color: th.danger, marginTop: "10px", lineHeight: "1.4" } }, state.authError));
-  card.appendChild(el("button", { disabled: state.authBusy, style: { width: "100%", padding: "12px", borderRadius: "10px", border: "none", background: th.accent, color: "#FFFCF7", fontSize: "13px", fontWeight: "700", cursor: state.authBusy ? "default" : "pointer", fontFamily: "'DM Sans',sans-serif", marginTop: "14px", opacity: state.authBusy ? "0.6" : "1" }, onClick: () => { if (state.authBusy) return; signup ? signUpEmail() : signInEmail(); } }, state.authBusy ? "Please wait..." : signup ? "Create account" : "Sign in"));
-  card.appendChild(el("button", { style: { width: "100%", padding: "10px", borderRadius: "8px", border: "none", background: "transparent", color: th.sub, fontSize: "11px", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", marginTop: "6px" }, onClick: () => { state.authMode = signup ? "signin" : "signup"; state.authError = ""; render(); } }, signup ? "Already have an account? Sign in" : "New here? Create an account"));
+  if (state.authError) card.appendChild(el("div", { style: { fontSize: "11px", color: th.danger, marginTop: "2px", marginBottom: "8px", lineHeight: "1.4" } }, state.authError));
   card.appendChild(el("button", { style: { width: "100%", padding: "6px", borderRadius: "8px", border: "none", background: "transparent", color: th.muted, fontSize: "11px", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", marginTop: "2px" }, onClick: () => { state.showAuth = false; render(); } }, "Cancel"));
   ov.appendChild(card);
   return ov;

@@ -12,7 +12,7 @@ A personal monthly wins tracker for logging earnings, setting goals, and visuali
 - Dark / Light theme toggle
 - CSV Import & Export (clipboard, file download, file upload)
 - Works fully offline — data saved in your browser via `localStorage`
-- **Optional cloud sync** — sign in with Google or email/password to sync across devices (see [Cloud sync](#cloud-sync-optional))
+- **Optional cloud sync** — sign in with Google to sync across devices (see [Cloud sync](#cloud-sync-optional))
 - Year navigation to track across multiple years
 - Reset controls for individual months or full year
 - Fully responsive - works on mobile and desktop
@@ -148,8 +148,7 @@ using (account_email = lower(auth.jwt() ->> 'email'));
 
 RLS guarantees each user can only read/write the row for their verified email,
 even with the public anon key. Keeping `account_email` lets Google sign-in and
-email/password sign-in share the same Staxxs data when they use the same email.
-Keep Supabase email confirmation on, and do not enable users without an email.
+Keep Google sign-in enabled, and do not enable users without an email.
 
 ### Production readiness notes
 
@@ -188,8 +187,9 @@ upgrade to Pro if you need guaranteed no-pausing, backups, or support.
 Only ever use the **anon / public** key (safe to expose; RLS protects the data).
 Never expose the `service_role` key.
 
-**3. Enable providers** (Supabase → Authentication → Providers): Email is on by
-default; for Google, add an OAuth client and paste the callback URL Supabase shows.
+**3. Enable providers** (Supabase → Authentication → Providers): enable Google,
+add an OAuth client, and paste the callback URL Supabase shows. Disable Email
+provider unless you are ready to support password resets and email deliverability.
 Then add your app URLs (`http://localhost:3457`, your Vercel/Pages URLs) under
 Authentication → URL Configuration.
 
