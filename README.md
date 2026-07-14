@@ -199,6 +199,23 @@ Pushes to `main` deploy automatically to:
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in each platform's env/secrets
 to enable cloud sync in production.
 
+## Recovering data from old Vercel domains
+
+Browser localStorage belongs to one exact domain. Data saved on
+`wins-tracker-app.vercel.app` cannot be read directly by `staxxs-tracker.vercel.app`.
+To recover users who saved data on an old domain:
+
+1. In Vercel, add the old domain/alias (`wins-tracker-app.vercel.app`, or
+   `staxx-tracker.vercel.app`) back to the current Staxxs project.
+2. Deploy this current code to that alias.
+3. Ask the user to open the old URL once in the same browser/device where their
+   data existed.
+4. The old URL will read its own localStorage, redirect to
+   `https://staxxs-tracker.vercel.app/`, and import the data there.
+
+This cannot be done with a script tag from only the new domain because browsers
+block one domain from reading another domain's localStorage.
+
 ## License
 
 This project is open source and available under the [MIT License](LICENSE).
