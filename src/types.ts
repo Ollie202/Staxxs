@@ -78,6 +78,8 @@ export interface State {
   resetYear: string;
   resetMonth: string;
   showResetPanel: boolean;
+  dataUpdatedAt: string;
+  dataOwnerEmail: string;
   confirm: ConfirmDialog | null;
   toast: string | null;
   editingGoalKey: string | null;
@@ -104,4 +106,6 @@ export interface PersistedData {
   goals: Goals;
   sources: string[];
   profile?: UserProfile;
+  updatedAt?: string;
+  ownerEmail?: string;
 }

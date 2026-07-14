@@ -36,6 +36,8 @@ export const state: State = {
   resetYear: String(new Date().getFullYear()),
   resetMonth: MONTHS[new Date().getMonth()],
   showResetPanel: false,
+  dataUpdatedAt: "",
+  dataOwnerEmail: "",
   confirm: null,
   toast: null,
   editingGoalKey: null,
@@ -95,6 +97,8 @@ export function normalizePersistedData(data: PersistedData): PersistedData {
     goals: normalizeGoals(data.goals || {}),
     sources: normalizeSources([...(data.sources || []), ...wins.map((win) => win.source)]),
     profile: data.profile,
+    updatedAt: data.updatedAt,
+    ownerEmail: data.ownerEmail,
   };
 }
 
@@ -108,6 +112,8 @@ export function load(): void {
       if (normalized.goals) state.goals = normalized.goals;
       if (normalized.sources.length) state.sources = normalized.sources;
       if (normalized.profile) state.profile = { username: normalized.profile.username || "", avatar: normalized.profile.avatar || "" };
+      state.dataUpdatedAt = normalized.updatedAt || "";
+      state.dataOwnerEmail = (normalized.ownerEmail || "").trim().toLowerCase();
     }
   } catch {
     /* ignore malformed data */
@@ -116,8 +122,10 @@ export function load(): void {
 
 /** Persist to localStorage and (when signed in) queue a cloud sync. */
 export function save(): void {
+  state.dataUpdatedAt = new Date().toISOString();
+  state.dataOwnerEmail = (state.user?.email || state.dataOwnerEmail || "").trim().toLowerCase();
   try {
-    localStorage.setItem(KEY, JSON.stringify({ wins: state.wins, goals: state.goals, sources: state.sources, profile: state.profile }));
+    localStorage.setItem(KEY, JSON.stringify({ wins: state.wins, goals: state.goals, sources: state.sources, profile: state.profile, updatedAt: state.dataUpdatedAt, ownerEmail: state.dataOwnerEmail }));
     localStorage.setItem(DARK_KEY, state.dark ? "true" : "false");
     localStorage.setItem(TAB_KEY, state.tab);
   } catch {

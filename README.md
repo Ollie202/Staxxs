@@ -147,6 +147,32 @@ even with the public anon key. Keeping `account_email` lets Google sign-in and
 email/password sign-in share the same Staxxs data when they use the same email.
 Keep Supabase email confirmation on, and do not enable users without an email.
 
+### Production readiness notes
+
+Staxxs stores one `user_data` row per account. That row contains the user's wins,
+goals, sources, and profile in a JSON blob. This is intentionally simple and is
+fine for a small public launch: 500 users is well within Supabase's normal free
+plan limits if each person is only tracking ordinary monthly entries and a small
+profile image.
+
+Cloud sync behavior:
+
+- Signed-out users save locally in the browser.
+- A brand-new signed-in user uploads their local data as their first cloud row.
+- A returning user loads their existing cloud row when they sign in.
+- If a signed-in user makes a local change and closes the page before the cloud
+  write finishes, Staxxs keeps a timestamp and preserves the newer same-account
+  local copy on the next open.
+- Failed cloud writes stay pending and retry when the browser comes back online.
+
+Known tradeoff: if the same account edits data on two devices at the same exact
+time, the latest saved copy wins. For heavier collaboration-style usage, split
+wins/goals into separate database rows instead of one JSON profile row.
+
+Before a larger launch, run Supabase Security Advisor and Performance Advisor,
+keep RLS enabled, protect the Supabase/GitHub/Vercel owner accounts with 2FA, and
+upgrade to Pro if you need guaranteed no-pausing, backups, or support.
+
 **2. Add credentials as env vars** (from Supabase → Project Settings → API):
 
 | Where | How |

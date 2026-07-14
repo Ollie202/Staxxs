@@ -9,18 +9,29 @@ import type { PersistedData } from "./types";
 let cloudLoaded = false;
 
 function currentData(): PersistedData {
-  return { wins: state.wins, goals: state.goals, sources: state.sources, profile: state.profile };
+  return { wins: state.wins, goals: state.goals, sources: state.sources, profile: state.profile, updatedAt: state.dataUpdatedAt, ownerEmail: state.dataOwnerEmail };
 }
 
-function applyData(data: PersistedData): void {
+function sessionEmail(session: Session): string {
+  return (session.user.email || "").trim().toLowerCase();
+}
+
+function newerThan(left?: string, right?: string): boolean {
+  if (!left || !right) return !!left && !right;
+  return new Date(left).getTime() > new Date(right).getTime();
+}
+
+function applyData(data: PersistedData, ownerEmail = ""): void {
   const normalized = normalizePersistedData(data);
   state.wins = normalized.wins;
   state.goals = normalized.goals;
   state.sources = normalized.sources && normalized.sources.length ? normalized.sources : normalizeSources(DEFAULT_SOURCES);
   state.profile = { username: normalized.profile?.username || "", avatar: normalized.profile?.avatar || "" };
   state.profileForm = { ...state.profile };
+  state.dataUpdatedAt = normalized.updatedAt || new Date().toISOString();
+  state.dataOwnerEmail = (ownerEmail || normalized.ownerEmail || "").trim().toLowerCase();
   try {
-    localStorage.setItem(KEY, JSON.stringify({ wins: state.wins, goals: state.goals, sources: state.sources, profile: state.profile }));
+    localStorage.setItem(KEY, JSON.stringify({ wins: state.wins, goals: state.goals, sources: state.sources, profile: state.profile, updatedAt: state.dataUpdatedAt, ownerEmail: state.dataOwnerEmail }));
   } catch {
     /* ignore */
   }
@@ -87,6 +98,7 @@ async function onSignedIn(session: Session, event: string): Promise<void> {
   if (!cloudLoaded && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
     cloudLoaded = true;
     const local = currentData();
+    const email = sessionEmail(session);
     const cloud = await cloudLoad();
     if (cloud === undefined) {
       state.showAuth = false;
@@ -96,9 +108,15 @@ async function onSignedIn(session: Session, event: string): Promise<void> {
     }
     const isNewCloudUser = cloud === null;
     if (cloud) {
-      applyData(cloud);
+      const localBelongsToThisAccount = !!email && local.ownerEmail === email;
+      if (localBelongsToThisAccount && newerThan(local.updatedAt, cloud.updatedAt)) {
+        applyData(local, email);
+        cloudSave();
+      } else {
+        applyData(cloud, email);
+      }
     } else {
-      applyData(local);
+      applyData(local, email);
       cloudSave();
     }
     if (isNewCloudUser || !state.profile.username) {
